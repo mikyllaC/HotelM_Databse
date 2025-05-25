@@ -6,7 +6,8 @@ from utils.helpers import clear_screen  # clear screen function
 
 
 def main():
-    ctk.set_appearance_mode("light")    # set default theme
+    ctk.set_appearance_mode("light")    # set light/dark mode
+    ctk.set_default_color_theme("blue") # set color theme
     app = Application()                 # creates the app
     app.mainloop()                      # keeps the app running
 

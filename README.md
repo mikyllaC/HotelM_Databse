@@ -1,3 +1,3 @@
 Hotel Management System (HMS)
 
-A project for IM, we are tasked to make a hotel management system using Python and tkinter for the frontend/backend and SQLite for the database.
+For a project for IM and IPT, we are tasked with creating a hotel management system using Python and Tkinter for the frontend/backend and SQLite for the database.
