@@ -1,4 +1,4 @@
-import customtkinter as ctk
+import customtkinter as ctk             # customtkinter
 
 class Dashboard(ctk.CTkFrame):
     def __init__(self, parent):
