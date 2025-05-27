@@ -17,9 +17,14 @@ class Application(ctk.CTk):
         self.title("Hotel Management System")
         self.geometry("1024x738")
 
+        self.skip_login = True
+
         self.current_screen = None      # track the current screen
 
-        self.show_login_screen()        # start with the login screen
+        if self.skip_login:
+            self.on_login_success()
+        else:
+            self.show_login_screen()        # start with the login screen
 
     def show_login_screen(self):        # show login screen at app start
         clear_screen(self)

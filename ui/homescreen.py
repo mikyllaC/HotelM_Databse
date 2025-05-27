@@ -1,17 +1,11 @@
 import customtkinter as ctk
-import tkinter as tk
 
-ctk.set_appearance_mode("Light")
-ctk.set_default_color_theme("blue")
-
-class HomeScreen(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.title("Hotel Management - Home Screen")
-        self.geometry("1024x738")
+class HomeScreen(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="#e6e6e6")
 
         # --- ALL YOUR WIDGETS GO INSIDE self.content_frame ---
-        self.content_frame = ctk.CTkFrame(self, width=1000, height=720)
+        self.content_frame = ctk.CTkFrame(self, width=1000, height=720, fg_color="#e6e6e6")
         self.content_frame.place(x=0, y=0, relwidth=1, relheight=1)
 
         # Title Screen
@@ -152,8 +146,3 @@ class HomeScreen(ctk.CTk):
                 f"{room['number']:<12}{room['type']:<12}{room['reservations']:<12}\n"
             )
         self.most_reserved_list.configure(state="disabled")
-
-
-if __name__ == "__main__":
-    app = HomeScreen()
-    app.mainloop()

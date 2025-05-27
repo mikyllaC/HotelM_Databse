@@ -1,13 +1,9 @@
 import customtkinter as ctk
 from tkinter import messagebox
 
-class SettingsPage(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.title("Settings")
-        self.geometry("1024x738")
-        self.resizable(True, True)
-        ctk.set_appearance_mode("light")
+class SettingsPage(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="#e6e6e6")
 
         # Main Label Frame
         self.label_frame = ctk.CTkFrame(self)
@@ -79,9 +75,3 @@ class SettingsPage(ctk.CTk):
             self.confirm_pass_input.delete(0, 'end')
         else:
             messagebox.showwarning("Error", "Current password is incorrect.")
-
-if __name__ == "__main__":
-    ctk.set_appearance_mode("System")
-    ctk.set_default_color_theme("blue")
-    app = SettingsPage()
-    app.mainloop()

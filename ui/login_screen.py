@@ -41,6 +41,6 @@ class LoginScreen(ctk.CTkFrame):
 
         user = User(username)
         if user.authenticate(password):
-            self.callback()             # runs the on_login_success function inside callback
+            self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")
