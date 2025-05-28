@@ -8,6 +8,8 @@ cursor = conn.cursor()
 sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Samuel", "Muralid", "CEO");'
 sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Karla", "Castro", "Manager");'
 
+cursor.executemany('''INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES (?, ?, ?)'''sql)
+
 
 cursor.execute(sql)
 
