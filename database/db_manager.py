@@ -4,14 +4,16 @@ import sqlite3
 conn = sqlite3.connect(r"C:\Users\User\Desktop\Hotel Management Database\database\Hotel_Management.db")
 cursor = conn.cursor()
 
-# SQL insert statement to Employee informations
-sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Samuel", "Muralid", "CEO");'
-sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Karla", "Castro", "Manager");'
+# Data to insert
+employees = [
+    ("Samuel", "Muralid", "CEO"),
+    ("Karla", "Castro", "Manager")
+]
 
-cursor.executemany('''INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES (?, ?, ?)'''sql)
-
-
-cursor.execute(sql)
+# Use executemany to insert multiple records
+cursor.executemany('''
+    INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES (?, ?, ?)
+''', employees)
 
 # Commit the transaction
 conn.commit()
