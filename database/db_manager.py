@@ -1,23 +1,18 @@
 import sqlite3
 
+# Connect to the database
+conn = sqlite3.connect(r"C:\Users\User\Desktop\Hotel Management Database\database\Hotel_Management.db")
+cursor = conn.cursor()
 
-def get_connection():
-    return sqlite3.connect("hms_database.db")
+# SQL insert statement to Employee informations
+sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Samuel", "Muralid", "CEO");'
+sql = 'INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES ("Karla", "Castro", "Manager");'
 
 
-def initialize_database():
-    conn = get_connection()
-    cursor = conn.cursor()
+cursor.execute(sql)
 
-    # Example table creation
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS guests (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            email TEXT,
-            phone TEXT
-        )
-    """)
+# Commit the transaction
+conn.commit()
 
-    conn.commit()
-    conn.close()
+# Close the connection
+conn.close()
