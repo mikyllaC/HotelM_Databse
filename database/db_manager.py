@@ -8,6 +8,7 @@ cursor = conn.cursor()
 employees = [
     ("Samuel", "Muralid", "CEO"),
     ("Karla", "Castro", "Manager")
+    ("Sofia", "Caday", "House Keeping")
 ]
 
 # Use executemany to insert multiple records
