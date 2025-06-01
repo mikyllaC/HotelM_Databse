@@ -1,9 +1,12 @@
 # ============== Imports ==============
 import sqlite3
 import os
+from asyncio import current_task
+
 
 def main():
     db = DBManager()
+    db.add_employee("Samuel", "Muralid", "CEO")
 
 
 # ============== Database Manager Class ==============
@@ -23,11 +26,11 @@ class DBManager:
             cursor = conn.cursor()
 
             cursor.execute("""
-            CREATE TABLE IF NOT EXISTS EMPLOYEE
-                employee_id TEXT PRIMARY KEY
-                first_name TEXT NOT NULL
-                last_name TEXT NOT NULL
-                position TEXT NOT NULL""")
+            CREATE TABLE IF NOT EXISTS EMPLOYEE (
+                EMPLOYEE_ID TEXT PRIMARY KEY,
+                FIRST_NAME TEXT NOT NULL,
+                LAST_NAME TEXT NOT NULL,
+                POSITION TEXT NOT NULL)""")
             conn.commit()
 
 
@@ -37,18 +40,35 @@ class DBManager:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
+            # finds the highest value id (previous id)
             cursor.execute("""
-            SELECT employee_id 
+            SELECT EMPLOYEE_ID 
             FROM EMPLOYEE
-            ORDER BY CAST(SUBSTR(employee_id, 3) AS INTEGER) DESC
+            ORDER BY CAST(SUBSTR(EMPLOYEE_ID, 3) AS INTEGER) DESC
             LIMIT 1
             """)
             # SUBSTR(employee_id, 3) — skips the first two characters (the initials).
             # CAST(... AS INTEGER) — converts the numeric suffix to an integer.
             # Orders descending by this integer to find the max. LIMIT gets the max
-            result = cursor.fetchone()
-            print(result)
-            conn.commit()
+            result = cursor.fetchone()[0]
+
+            if result: # if not the first employee
+                previous_id_num = int(result[2:]) # skips the initials
+                new_id_num = previous_id_num + 1
+            else:
+                new_id_num = 1
+
+            new_id = f"{initials}+{new_id_num:04d}"  # ex: SM0001
+
+            return new_id
+
+
+    def add_employee(self, first_name, last_name, position):
+        self.generate_employee_id(first_name, last_name)
+
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
+
 
 
 
