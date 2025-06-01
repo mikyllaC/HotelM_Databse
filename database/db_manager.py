@@ -2,10 +2,8 @@
 import sqlite3
 import os
 
-
 def main():
     db = DBManager()
-
 
 # ============== Database Manager Class ==============
 class DBManager:
