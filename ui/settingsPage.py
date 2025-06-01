@@ -53,7 +53,7 @@ class SettingsPage(ctk.CTkFrame):
         
         # Add a line border (separator)
         ctk.CTkFrame(self.label_frame, height=2, fg_color="#cccccc").pack(fill='x', pady=(0, 20))
-
+        
     def handle_change_password(self):
         old_pass = self.old_pass_input.get()
         new_pass = self.new_pass_input.get()
