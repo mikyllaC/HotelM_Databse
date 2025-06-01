@@ -20,7 +20,7 @@ class Application(ctk.CTk):
         self.title("Hotel Management System")   # set window title
         self.geometry("1024x738")       # set window size (width x height)
 
-        self.skip_login = True
+        self.skip_login = False
 
         self.current_screen = None      # track the current screen
 

@@ -1,23 +1,19 @@
 # ============== Imports ==============
 import sqlite3
+import os
 
-# Connect to the database
-conn = sqlite3.connect(r"C:\Users\User\Desktop\Hotel Management Database\database\Hotel_Management.db")
-cursor = conn.cursor()
 
-# Data to insert
-employees = [
-    ("Samuel", "Muralid", "CEO"),
-    ("Karla", "Castro", "Manager")
-]
+def main():
+    db = DBManager()
 
-# Use executemany to insert multiple records
-cursor.executemany('''
-    INSERT INTO EMPLOYEE (LAST_NAME, FIRST_NAME, POSITION) VALUES (?, ?, ?)
-''', employees)
 
-# Commit the transaction
-conn.commit()
+# ============== Database Manager Class ==============
+class DBManager:
+    def __init__(self):
+        # Dynamically set the database path relative to this file
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.db_path = os.path.join(base_dir, "Hotel_Management.db")
 
-# Close the connection
-conn.close()
+
+if __name__ == "__main__":
+    main()
