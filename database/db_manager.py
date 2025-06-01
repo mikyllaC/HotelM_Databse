@@ -6,7 +6,10 @@ from asyncio import current_task
 
 def main():
     db = DBManager()
-    db.add_employee("Samuel", "Muralid", "CEO")
+    #db.add_employee("Samuel", "Muralid", "CEO")
+    #db.add_employee("Mikylla", "Coronado", "Front Desk")
+    #db.add_employee("Sofia", "Caday", "Janitor")
+    #db.add_employee("Zydney", "Astudillo", "Manager")
 
 
 # ============== Database Manager Class ==============
@@ -51,6 +54,7 @@ class DBManager:
             # CAST(... AS INTEGER) — converts the numeric suffix to an integer.
             # Orders descending by this integer to find the max. LIMIT gets the max
             result = cursor.fetchone()[0]
+            print(f"Previous ID: {result}")
 
             if result: # if not the first employee
                 previous_id_num = int(result[2:]) # skips the initials
@@ -58,18 +62,22 @@ class DBManager:
             else:
                 new_id_num = 1
 
-            new_id = f"{initials}+{new_id_num:04d}"  # ex: SM0001
-
+            new_id = f"{initials}{new_id_num:03d}"  # ex: SM001
+            print(f"Generated ID: {new_id}")
             return new_id
 
 
     def add_employee(self, first_name, last_name, position):
-        self.generate_employee_id(first_name, last_name)
+        employee_id = self.generate_employee_id(first_name, last_name)
 
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
+            cursor.execute("""
+            INSERT INTO EMPLOYEE (EMPLOYEE_ID, FIRST_NAME, LAST_NAME, POSITION)
+            VALUES (?, ?, ?, ?)""", (employee_id, first_name, last_name, position))
 
+            conn.commit()
 
 
 if __name__ == "__main__":
