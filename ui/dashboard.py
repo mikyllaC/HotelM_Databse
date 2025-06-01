@@ -81,3 +81,19 @@ class StaffMaintenancePage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         ctk.CTkLabel(self, text="Staff and Maintenance", font=ctk.CTkFont(size=20)).pack(pady=40)
+
+            # Add a logout button at the bottom of the sidebar
+        self.logout_button = ctk.CTkButton(
+                self.sidebar,
+                text="Log Out",
+                fg_color="#d9534f",
+                hover_color="#c9302c",
+                text_color="white",
+                command=self.logout
+            )
+        self.logout_button.pack(side="bottom", fill="x", padx=15, pady=20)
+    
+        def logout(self):
+            # Example logout logic: destroy dashboard and show login screen
+            self.master.destroy()
+            # You can add logic here to show the login window if needed
