@@ -21,19 +21,27 @@ class DBManager:
         # os.path.dirname(...) gives the directory (.../database/).
         # os.path.join(...) builds the final path to Hotel_Management.db.
 
-        self.create_employee_table()
+        self.create_tables()
 
 
-    def create_employee_table(self):
+    def create_tables(self):
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
+            # ---- Create EMPLOYEE table ----
             cursor.execute("""
             CREATE TABLE IF NOT EXISTS EMPLOYEE (
                 EMPLOYEE_ID TEXT PRIMARY KEY,
                 FIRST_NAME TEXT NOT NULL,
                 LAST_NAME TEXT NOT NULL,
                 POSITION TEXT NOT NULL)""")
+
+            # ---- Create USER_AUTH table ----
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS USER_AUTH (
+                EMPLOYEE_ID TEXT PRIMARY KEY,
+                PASSWORD TEXT NOT NULL)""")
+
             conn.commit()
 
 
