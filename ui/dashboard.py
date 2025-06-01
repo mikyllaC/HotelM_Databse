@@ -2,6 +2,7 @@
 import customtkinter as ctk                 # customtkinter
 from ui.homescreen import HomeScreen        # home screen page
 from ui.settingsPage import SettingsPage    # settings page
+from utils.helpers import clear_screen
 
 
 # ============== Dashboard Page ==============
@@ -90,9 +91,13 @@ class Dashboard(ctk.CTkFrame):
 
     # ============== Logout Handler ==============
     def logout(self):
-        # Example logout logic: destroy dashboard and show login screen
-        self.master.destroy()
-        # You can add logic here to show the login window if needed
+        from ui.login_screen import LoginScreen
+        from utils.session import Session
+
+        Session.current_user = None
+        clear_screen(self.master)
+        login_screen = LoginScreen(self.master, self.master.on_login_success)
+        login_screen.pack(ill="both", expand=True)
 
 
 # ============== Placeholder Pages ==============

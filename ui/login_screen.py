@@ -2,14 +2,18 @@
 import tkinter as tk                    # tkinter
 import customtkinter as ctk             # customtkinter
 from models.user import User            # backend logic for authentication
+from utils.session import Session
+from database.db_manager import DBManager
 
 
 # ============== Login Screen ==============
 class LoginScreen(ctk.CTkFrame):
-    def __init__(self, master, dashboard_callback):
-        super().__init__(master)
+    def __init__(self, parent, dashboard_callback):
+        super().__init__(parent)
 
+        self.db_manager = DBManager()
         self.callback = dashboard_callback  # function to call when login is successful
+
         self.create_widgets()           # initializes UI components
 
 
@@ -35,8 +39,8 @@ class LoginScreen(ctk.CTkFrame):
         self.subtitle.pack(pady=(2, 30), padx=5)
 
         # ---- Entry Fields ----
-        self.username_entry = ctk.CTkEntry(self, placeholder_text="Employee ID")
-        self.username_entry.pack(pady=10)
+        self.employee_id_entry = ctk.CTkEntry(self, placeholder_text="Employee ID")
+        self.employee_id_entry.pack(pady=10)
 
         self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*")
         self.password_entry.pack(pady=10)
@@ -60,19 +64,17 @@ class LoginScreen(ctk.CTkFrame):
 
     # ============== Events ==============
     def forgot_password(self):
-        # Triggered when 'Forgot Password?' is clicked.
-
         tk.messagebox.showinfo("Forgot Password", "Password reset instructions will be sent to your email.")
 
 
     def check_login(self):
-        # Checks user credentials and proceeds if authentication succeeds
-
-        username = self.username_entry.get()
+        employee_id = self.employee_id_entry.get()
         password = self.password_entry.get()
 
-        user = User(username)
-        if user.authenticate(password):
+        user = User(employee_id)
+
+        if user.login(password):
+            Session.current_user = employee_id
             self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")

@@ -3,6 +3,7 @@ import customtkinter as ctk             # customtkinter
 from ui.dashboard import Dashboard      # dashboard screen
 from ui.login_screen import LoginScreen # login screen
 from utils.helpers import clear_screen  # clear screen function
+from utils.session import Session
 
 
 def main():
@@ -20,11 +21,9 @@ class Application(ctk.CTk):
         self.title("Hotel Management System")   # set window title
         self.geometry("1024x738")       # set window size (width x height)
 
-        self.skip_login = False
+        #self.current_screen = None      # track the current screen
 
-        self.current_screen = None      # track the current screen
-
-        if self.skip_login:
+        if Session.current_user:
             self.on_login_success()     # skip login screen
         else:
             self.show_login_screen()    # show login screen first
