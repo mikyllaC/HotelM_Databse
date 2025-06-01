@@ -13,7 +13,7 @@ class LoginScreen(ctk.CTkFrame):
         self.create_widgets()           # initializes UI components
 
 
-    # ============== UI Setup ==============
+    # ============== Widget Creation ==============
     def create_widgets(self):
         # ---- Title Label ----
         self.label = ctk.CTkLabel(self,
