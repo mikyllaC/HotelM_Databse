@@ -1,19 +1,25 @@
-import customtkinter as ctk             # customtkinter
-from ui.homescreen import HomeScreen
-from ui.settingsPage import SettingsPage
+# ============== Imports ==============
+import customtkinter as ctk                 # customtkinter
+from ui.homescreen import HomeScreen        # home screen page
+from ui.settingsPage import SettingsPage    # settings page
 
+
+# ============== Dashboard Page ==============
 class Dashboard(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.master = parent
 
+        # ============== Sidebar ==============
         self.sidebar = ctk.CTkFrame(self, corner_radius=0)
         self.sidebar.pack(side="left", fill="y")
 
+        # ---- Sidebar Title ----
         self.sidebarLabel = ctk.CTkLabel(self.sidebar, text="The Reverie Hotel",
                                          font=ctk.CTkFont(size=20, weight="bold"))
         self.sidebarLabel.pack(pady=(25, 20), padx=15)
 
+        # ============== Page Navigation ==============
         self.buttons = []
         self.pages = {
             "Home": HomeScreen,
@@ -40,7 +46,7 @@ class Dashboard(ctk.CTkFrame):
         self.highlight_button("Home")
         self.select_page("Home")
 
-        # Add a logout button at the bottom of the sidebar
+        # ============== Logout Button ==============
         self.logout_button = ctk.CTkButton(
             self.sidebar,
             text="Log Out",
@@ -51,17 +57,6 @@ class Dashboard(ctk.CTkFrame):
         )
         self.logout_button.pack(side="bottom", fill="x", padx=15, pady=20)
 
-    def logout(self):
-        # Example logout logic: destroy dashboard and show login screen
-        self.master.destroy()
-        # You can add logic here to show the login window if needed
-
-    def highlight_button(self, selected):
-        for btn, name in self.buttons:
-            if name == selected:
-                btn.configure(fg_color="#4a48df", text_color="white")
-            else:
-                btn.configure(fg_color="transparent", text_color="black")
 
     def select_page(self, page_name):
         self.highlight_button(page_name)
@@ -73,6 +68,21 @@ class Dashboard(ctk.CTkFrame):
         self.current_page.pack(side="left", fill="both", expand=True)
 
 
+    def highlight_button(self, selected):
+        for btn, name in self.buttons:
+            if name == selected:
+                btn.configure(fg_color="#4a48df", text_color="white")
+            else:
+                btn.configure(fg_color="transparent", text_color="black")
+
+
+    def logout(self):
+        # Example logout logic: destroy dashboard and show login screen
+        self.master.destroy()
+        # You can add logic here to show the login window if needed
+
+
+# ============== Placeholder Pages ==============
 class RoomManagementPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
