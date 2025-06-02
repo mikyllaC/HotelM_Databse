@@ -2,6 +2,7 @@
 import tkinter as tk                    # tkinter
 import customtkinter as ctk             # customtkinter
 from models.user import User            # backend logic for authentication
+from utils.helpers import log
 
 
 # ============== Login Screen ==============
@@ -71,7 +72,7 @@ class LoginScreen(ctk.CTkFrame):
         user = User(employee_id)
 
         if user.login(password):
-            print(f"Login Success: {employee_id} - {user.first_name} {user.last_name}")
+            log(f"Login Success: {employee_id} - {user.first_name} {user.last_name}")
             self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")

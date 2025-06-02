@@ -2,7 +2,7 @@
 import customtkinter as ctk             # customtkinter
 from ui.dashboard import Dashboard      # dashboard screen
 from ui.login_screen import LoginScreen # login screen
-from utils.helpers import clear_screen  # clear screen function
+from utils.helpers import clear_screen, log
 from utils.session import Session
 
 
@@ -18,10 +18,11 @@ def main():
 class Application(ctk.CTk):
     def __init__(self):
         super().__init__()              # gives the Application class all the behaviors of a CTk window
+        log("Application started")
         self.title("Hotel Management System")   # set window title
         self.geometry("1024x738")       # set window size (width x height)
 
-        #self.current_screen = None      # track the current screen
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         if Session.current_user:
             self.on_login_success()     # skip login screen
@@ -41,6 +42,14 @@ class Application(ctk.CTk):
         clear_screen(self)
         self.dashboard = Dashboard(self)
         self.dashboard.pack(fill="both", expand=True)
+
+
+    def on_closing(self):
+        # Logs out user on application close
+        log(f"Logging out: {getattr(Session.current_user, 'employee_id', 'None')}")
+        Session.current_user = None
+        log("Application stopped")
+        self.destroy()
 
 
 if __name__ == "__main__":
