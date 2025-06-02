@@ -21,7 +21,7 @@ class Application(ctk.CTk):
         log("Application started.")
         super().__init__()              # gives the Application class all the behaviors of a CTk window
         self.title("Hotel Management System")   # set window title
-        self.geometry("1024x738")       # set window size (width x height)
+        self.geometry("1600x900")       # set window size (width x height)
         log("Main window initialized with title and geometry.")
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
