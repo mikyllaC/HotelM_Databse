@@ -40,7 +40,7 @@ class LoginScreen(ctk.CTkFrame):
         self.employee_id_entry = ctk.CTkEntry(self, placeholder_text="Employee ID")
         self.employee_id_entry.pack(pady=10)
         self.employee_id_entry.bind('<Return>', lambda e: self.password_entry.focus_set())
-        self.after(100, lambda: self.employee_id_entry.focus_set())
+        #self.after(100, lambda: self.employee_id_entry.focus_set()) # auto focus this entry
 
         self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*")
         self.password_entry.pack(pady=10)

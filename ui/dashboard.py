@@ -1,7 +1,12 @@
 # ============== Imports ==============
 import customtkinter as ctk                 # customtkinter
-from ui.homescreen import HomeScreen        # home screen page
-from ui.settingsPage import SettingsPage    # settings page
+from ui.homescreen import HomeScreenPage
+from ui.roomManagementPage import RoomManagementPage
+from ui.guestListPage import GuestListPage
+from ui.reservationsPage import ReservationsPage
+from ui.billingPaymentPage import BillingPaymentPage
+from ui.staffMaintenancePage import StaffMaintenancePage
+from ui.settingsPage import SettingsPage
 from utils.helpers import clear_screen, log
 
 
@@ -11,7 +16,7 @@ class Dashboard(ctk.CTkFrame):
         super().__init__(parent)
         self.master = parent                # store reference to main app
 
-        self.pages = {"Home": HomeScreen,
+        self.pages = {"Home": HomeScreenPage,
                       "Room Management": RoomManagementPage,
                       "Guest List": GuestListPage,
                       "Reservations": ReservationsPage,
@@ -100,30 +105,3 @@ class Dashboard(ctk.CTkFrame):
 
         login_screen = LoginScreen(self.master, self.master.on_login_success)
         login_screen.pack(fill="both", expand=True)
-
-
-# ============== Placeholder Pages ==============
-class RoomManagementPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Room Management", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class GuestListPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Guest List", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class ReservationsPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Reservations", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class BillingPaymentPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Billing & Payment", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class StaffMaintenancePage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Staff and Maintenance", font=ctk.CTkFont(size=20)).pack(pady=40)
