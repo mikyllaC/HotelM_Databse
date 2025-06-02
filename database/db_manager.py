@@ -1,6 +1,8 @@
 # ============== Imports ==============
 import sqlite3
 import os
+import random
+from utils.helpers import log
 
 
 def main():
@@ -15,8 +17,8 @@ def main():
         "DATE_OF_BIRTH": "2005-06-27",
         "ADDRESS": "123 Amethyst St, Fern Village, QC"
     }
-    #db.add_employee(employee_data)
-    #db.add_user_credentials("SM0001", 123)
+    db.add_employee(employee_data)
+    #db.add_user_credentials("SM0001")
 
 
 # ============== Database Manager Class ==============
@@ -24,9 +26,8 @@ class DBManager:
     def __init__(self):
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(base_dir, "Hotel_Management.db")
-        # os.path.abspath(__file__) gives the full path to db_manager.py.
-        # os.path.dirname(...) gives the directory (.../database/).
-        # os.path.join(...) builds the final path to Hotel_Management.db.
+        log(f"Database path set to: {self.db_path}")
+
         self.create_tables()
 
 
@@ -42,25 +43,35 @@ class DBManager:
             cursor = conn.cursor()
 
             # ---- Create EMPLOYEE table ----
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS EMPLOYEE (
-                EMPLOYEE_ID TEXT PRIMARY KEY,
-                FIRST_NAME TEXT NOT NULL,
-                LAST_NAME TEXT NOT NULL,
-                POSITION TEXT NOT NULL,
-                HIRE_DATE TEXT,
-                CONTACT_NUMBER INTEGER UNIQUE,
-                EMAIL TEXT UNIQUE,
-                DATE_OF_BIRTH TEXT,
-                ADDRESS TEXT,
-                STATUS TEXT NOT NULL DEFAULT 'active')""")
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='EMPLOYEE'")
+            if cursor.fetchone(): # Check if EMPLOYEE table exists
+                log("EMPLOYEE table already exists.")
+            else:
+                cursor.execute("""
+                    CREATE TABLE EMPLOYEE (
+                        EMPLOYEE_ID TEXT PRIMARY KEY,
+                        FIRST_NAME TEXT NOT NULL,
+                        LAST_NAME TEXT NOT NULL,
+                        POSITION TEXT NOT NULL,
+                        HIRE_DATE TEXT,
+                        CONTACT_NUMBER INTEGER UNIQUE,
+                        EMAIL TEXT UNIQUE,
+                        DATE_OF_BIRTH TEXT,
+                        ADDRESS TEXT,
+                        STATUS TEXT NOT NULL DEFAULT 'active')""")
+                log("EMPLOYEE table created.")
 
             # ---- Create USER_AUTH table ----
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS USER_AUTH (
-                EMPLOYEE_ID TEXT PRIMARY KEY,
-                PASSWORD TEXT NOT NULL,
-                FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID))""")
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='USER_AUTH'")
+            if cursor.fetchone(): # Check if USER_AUTH table exists
+                log("USER_AUTH table already exists.")
+            else:
+                cursor.execute("""
+                    CREATE TABLE USER_AUTH (
+                        EMPLOYEE_ID TEXT PRIMARY KEY,
+                        PASSWORD TEXT NOT NULL,
+                        FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID))""")
+                log("USER_AUTH table created.")
 
             conn.commit()
 
@@ -82,7 +93,6 @@ class DBManager:
             # CAST(... AS INTEGER) — converts the numeric suffix to an integer.
             # Orders descending by this integer to find the max. LIMIT gets the max
             result = cursor.fetchone()
-            print(f"Previous ID: {result}")
 
             if result: # if not the first employee
                 previous_id_num = int(result[2:]) # skips the initials
@@ -91,7 +101,7 @@ class DBManager:
                 new_id_num = 1
 
             new_id = f"{initials}{new_id_num:04d}"  # ex: SM0001
-            print(f"Generated ID: {new_id}")
+            log(f"Generated new EMPLOYEE_ID: {new_id}")
             return new_id
 
 
@@ -111,17 +121,38 @@ class DBManager:
                           employee_data.get("EMAIL"),employee_data.get("DATE_OF_BIRTH"),
                           employee_data.get("ADDRESS"),employee_data.get("STATUS", "active") ) )
             conn.commit()
+        log(f"Added employee: ({employee_id}) to the database.")
+
+        self.add_user_credentials(employee_id, employee_data.get("FIRST_NAME"), employee_data.get("LAST_NAME"),
+                                  employee_data.get("HIRE_DATE"))
         return employee_id
 
 
-    def add_user_credentials(self, employee_id, password):
+    def generate_default_password(self, first_name, last_name, hire_date):
+        # default password format:
+        # <FirstInitial><LastInitial><@><HireYear><#><Random2Digits> | SM@2024#83
+        initials = (first_name[0] + last_name[0]).upper()
+        hire_year = hire_date.split("-")[0]  # extract year from hire_date
+        random_digits = random.randint(10, 99)
+        default_password = f"{initials}@{hire_year}#{random_digits}"
+        return default_password
+
+
+    def add_user_credentials(self, employee_id, first_name, last_name, hire_date, password=None):
+        if not password:
+            default_password = self.generate_default_password(first_name, last_name, hire_date)
+            log(f"Generated default password for {employee_id}: {default_password}")
+        else:
+            default_password = password
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 INSERT INTO USER_AUTH (EMPLOYEE_ID, PASSWORD)
                 VALUES (?, ?)
-            """, (employee_id, password))
+            """, (employee_id, default_password))
             conn.commit()
+        log(f"Stored authentication credentials for {employee_id}")
 
 
     def get_user_credentials(self, employee_id):
