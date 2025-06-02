@@ -19,11 +19,13 @@ def main():
     }
     db.add_employee(employee_data)
     #db.add_user_credentials("SM0001")
+    log("DBManager application finished.")
 
 
 # ============== Database Manager Class ==============
 class DBManager:
     def __init__(self):
+        log("DBManager application started.")
         base_dir = os.path.dirname(os.path.abspath(__file__))
         self.db_path = os.path.join(base_dir, "Hotel_Management.db")
         log(f"Database path set to: {self.db_path}")
@@ -43,35 +45,25 @@ class DBManager:
             cursor = conn.cursor()
 
             # ---- Create EMPLOYEE table ----
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='EMPLOYEE'")
-            if cursor.fetchone(): # Check if EMPLOYEE table exists
-                log("EMPLOYEE table already exists.")
-            else:
-                cursor.execute("""
-                    CREATE TABLE EMPLOYEE (
-                        EMPLOYEE_ID TEXT PRIMARY KEY,
-                        FIRST_NAME TEXT NOT NULL,
-                        LAST_NAME TEXT NOT NULL,
-                        POSITION TEXT NOT NULL,
-                        HIRE_DATE TEXT,
-                        CONTACT_NUMBER INTEGER UNIQUE,
-                        EMAIL TEXT UNIQUE,
-                        DATE_OF_BIRTH TEXT,
-                        ADDRESS TEXT,
-                        STATUS TEXT NOT NULL DEFAULT 'active')""")
-                log("EMPLOYEE table created.")
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS EMPLOYEE (
+                EMPLOYEE_ID TEXT PRIMARY KEY,
+                FIRST_NAME TEXT NOT NULL,
+                LAST_NAME TEXT NOT NULL,
+                POSITION TEXT NOT NULL,
+                HIRE_DATE TEXT,
+                CONTACT_NUMBER INTEGER UNIQUE,
+                EMAIL TEXT UNIQUE,
+                DATE_OF_BIRTH TEXT,
+                ADDRESS TEXT,
+                STATUS TEXT NOT NULL DEFAULT 'active')""")
 
             # ---- Create USER_AUTH table ----
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='USER_AUTH'")
-            if cursor.fetchone(): # Check if USER_AUTH table exists
-                log("USER_AUTH table already exists.")
-            else:
-                cursor.execute("""
-                    CREATE TABLE USER_AUTH (
-                        EMPLOYEE_ID TEXT PRIMARY KEY,
-                        PASSWORD TEXT NOT NULL,
-                        FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID))""")
-                log("USER_AUTH table created.")
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS USER_AUTH (
+                EMPLOYEE_ID TEXT PRIMARY KEY,
+                PASSWORD TEXT NOT NULL,
+                FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID))""")
 
             conn.commit()
 
@@ -125,7 +117,7 @@ class DBManager:
 
         self.add_user_credentials(employee_id, employee_data.get("FIRST_NAME"), employee_data.get("LAST_NAME"),
                                   employee_data.get("HIRE_DATE"))
-        return employee_id
+        #return employee_id
 
 
     def generate_default_password(self, first_name, last_name, hire_date):
@@ -170,6 +162,17 @@ class DBManager:
             # e.* → selects all the columns from the EMPLOYEE table.
             # joins the columns into 1 row for each employee, WHERE filters the EMPLOYEE_ID to only get 1 result
             return cursor.fetchone()
+
+
+    def update_user_credentials(self, employee_id, new_password):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            UPDATE USER_AUTH
+            SET PASSWORD = ?
+            WHERE EMPLOYEE_ID = ?""", (new_password, employee_id,))
+            log("Updated user's authentication credentials.")
+            conn.commit()
 
 
 if __name__ == "__main__":

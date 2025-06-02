@@ -94,7 +94,7 @@ class Dashboard(ctk.CTkFrame):
         from ui.login_screen import LoginScreen
         from utils.session import Session
 
-        log(f"Logging Out: {Session.current_user.employee_id}")
+        log(f"Logging out: {getattr(Session.current_user, 'employee_id', 'None')}")
         Session.current_user = None
         clear_screen(self.master)
 

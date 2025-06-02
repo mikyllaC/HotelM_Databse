@@ -42,6 +42,7 @@ class LoginScreen(ctk.CTkFrame):
 
         self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*")
         self.password_entry.pack(pady=10)
+        self.password_entry.bind('<Return>', self.check_login)
 
         # ---- Forgot Password Button ----
         self.forget_password_button = ctk.CTkButton(self,
@@ -65,14 +66,15 @@ class LoginScreen(ctk.CTkFrame):
         tk.messagebox.showinfo("Forgot Password", "Password reset instructions will be sent to your email.")
 
 
-    def check_login(self):
-        employee_id = self.employee_id_entry.get()
-        password = self.password_entry.get()
+    def check_login(self, event=None):
+        employee_id = self.employee_id_entry.get().strip()
+        password = self.password_entry.get().strip()
 
         user = User(employee_id)
 
         if user.login(password):
-            log(f"Login Success: {employee_id} - {user.first_name} {user.last_name}")
+            log(f"Login success: {employee_id} - {user.first_name} {user.last_name}")
             self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
+            log(f"Login failed for employee id: {employee_id}")
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")
