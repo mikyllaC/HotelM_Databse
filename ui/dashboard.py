@@ -1,24 +1,31 @@
 # ============== Imports ==============
-import customtkinter as ctk                 # customtkinter
-from ui.homescreen import HomeScreen        # home screen page
-from ui.settingsPage import SettingsPage    # settings page
-from utils.helpers import clear_screen
-from utils.session import Session
+import customtkinter as ctk                 # customtkinter'
+from tkinter import messagebox
+
+from ui.homescreen import HomeScreenPage
+from ui.roomManagementPage import RoomManagementPage
+from ui.guestListPage import GuestListPage
+from ui.reservationsPage import ReservationsPage
+from ui.billingPaymentPage import BillingPaymentPage
+from ui.staffMaintenancePage import StaffMaintenancePage
+from ui.settingsPage import SettingsPage
+
+from utils.helpers import clear_screen, log
 
 
 # ============== Dashboard Page ==============
 class Dashboard(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.master = parent                # store reference to main app
 
-        self.pages = {"Home": HomeScreen,
+        self.pages = {"Home": HomeScreenPage,
                       "Room Management": RoomManagementPage,
                       "Guest List": GuestListPage,
                       "Reservations": ReservationsPage,
                       "Billing & Payment": BillingPaymentPage,
                       "Staff and Maintenance": StaffMaintenancePage,
-                      "Settings": SettingsPage }
+                      "Settings": SettingsPage
+                      }
         self.current_page = None            # currently active page
         self.buttons = []                   # store navigation buttons
 
@@ -51,17 +58,17 @@ class Dashboard(ctk.CTkFrame):
             # Without 'n=name', all buttons would end up using the last value due to late binding in Python.
             # This ensures each button calls 'self.select_page()' with its corresponding page name.
             btn.pack(fill="x", padx=15, pady=(0, 10))
-            self.buttons.append((btn, page_name))
+            self.buttons.append((btn, page_name))   # store for later highlight
 
         # ---- Select Default Page ----
-        self.highlight_button("Home")
-        self.select_page("Home")
+        self.highlight_button("Home")       # highlight 'Home' button on startup
+        self.select_page("Home")            # load home screen by default
 
         # ---- Logout Button ----
         self.logout_button = ctk.CTkButton(self.sidebar,
                                            text="Log Out",
-                                           fg_color="#d9534f",
-                                           hover_color="#c9302c",
+                                           fg_color="#d9534f",      # Bootstrap-style red
+                                           hover_color="#c9302c",   # Darker red on hover
                                            text_color="white",
                                            command=self.logout )
         self.logout_button.pack(side="bottom", fill="x", padx=15, pady=20)
@@ -85,9 +92,9 @@ class Dashboard(ctk.CTkFrame):
     def highlight_button(self, selected_page):
         for btn, page_name in self.buttons:
             if page_name == selected_page:
-                btn.configure(fg_color="#4a48df", text_color="white")
+                btn.configure(fg_color="#4a48df", text_color="white")       # Active
             else:
-                btn.configure(fg_color="transparent", text_color="black")
+                btn.configure(fg_color="transparent", text_color="black")   # Inactive
 
 
     # ============== Logout Handler ==============
@@ -95,37 +102,14 @@ class Dashboard(ctk.CTkFrame):
         from ui.login_screen import LoginScreen
         from utils.session import Session
 
-        print(f"Logging Out: {Session.current_user.employee_id} - "
-              f"{Session.current_user.first_name} {Session.current_user.last_name}")
-        Session.current_user = None
-        clear_screen(self.master)
+        confirm = messagebox.askyesno("Log Out", "Are you sure you want to log out?")
+        if not confirm:
+            return  # if user cancels logout, do nothing
 
+        log(f"Logging out: {getattr(Session.current_user, 'employee_id', 'None')}")
+        Session.current_user = None
+
+        # clear dashboard and return to login screen
+        clear_screen(self.master)
         login_screen = LoginScreen(self.master, self.master.on_login_success)
         login_screen.pack(fill="both", expand=True)
-
-
-# ============== Placeholder Pages ==============
-class RoomManagementPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Room Management", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class GuestListPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Guest List", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class ReservationsPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Reservations", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class BillingPaymentPage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Billing & Payment", font=ctk.CTkFont(size=20)).pack(pady=40)
-
-class StaffMaintenancePage(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
-        ctk.CTkLabel(self, text="Staff and Maintenance", font=ctk.CTkFont(size=20)).pack(pady=40)

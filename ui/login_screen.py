@@ -2,6 +2,7 @@
 import tkinter as tk                    # tkinter
 import customtkinter as ctk             # customtkinter
 from models.user import User            # backend logic for authentication
+from utils.helpers import log
 
 
 # ============== Login Screen ==============
@@ -18,14 +19,14 @@ class LoginScreen(ctk.CTkFrame):
     def create_widgets(self):
 
         # ---- Title Label ----
-        self.label = ctk.CTkLabel(self,
+        self.title_label = ctk.CTkLabel(self,
                                   text="Hotel Management System",
                                   font=("Arial", 24, "bold"),
                                   text_color="black",
                                   justify="center",
                                   width=50,
                                   height=100 )
-        self.label.pack(pady=(50, 10), padx=10)
+        self.title_label.pack(pady=(50, 10), padx=10)
 
         # ---- Subtitle Label ----
         self.subtitle = ctk.CTkLabel(self,
@@ -38,9 +39,13 @@ class LoginScreen(ctk.CTkFrame):
         # ---- Entry Fields ----
         self.employee_id_entry = ctk.CTkEntry(self, placeholder_text="Employee ID")
         self.employee_id_entry.pack(pady=10)
+        self.employee_id_entry.bind('<Return>', lambda e: self.password_entry.focus_set())
+        #self.after(100, lambda: self.employee_id_entry.focus_set()) # auto focus this entry
 
         self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*")
         self.password_entry.pack(pady=10)
+        self.password_entry.bind('<Return>', self.check_login)
+
 
         # ---- Forgot Password Button ----
         self.forget_password_button = ctk.CTkButton(self,
@@ -64,14 +69,22 @@ class LoginScreen(ctk.CTkFrame):
         tk.messagebox.showinfo("Forgot Password", "Password reset instructions will be sent to your email.")
 
 
-    def check_login(self):
-        employee_id = self.employee_id_entry.get()
-        password = self.password_entry.get()
+    def check_login(self, event=None):
+        employee_id = self.employee_id_entry.get().strip()
+        password = self.password_entry.get().strip()
+
+        if not employee_id or not password:
+            tk.messagebox.showwarning("Missing Fields", "Please enter both Employee ID and Password.")
+            log(f"Login attempt failed: Empty employee_id or password.")
+            return
 
         user = User(employee_id)
 
         if user.login(password):
-            print(f"Login Success: {employee_id} - {user.first_name} {user.last_name}")
+            log(f"Login success: {employee_id} - {user.first_name} {user.last_name}")
+            self.employee_id_entry.unbind("<Return>")
+            self.password_entry.unbind("<Return>")
             self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
+            log(f"Login failed for employee id: {employee_id}")
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")

@@ -1,6 +1,9 @@
 # ============== Imports ==============
 import customtkinter as ctk
 from tkinter import messagebox
+from database.db_manager import DBManager
+from utils.session import Session
+from utils.helpers import log
 
 
 # ============== Settings Page ==============
@@ -8,8 +11,11 @@ class SettingsPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent, fg_color="#e6e6e6")
 
-        # ============== Main Layout ==============
+        self.create_widget()
 
+
+    # ============== Widget Creation ==============
+    def create_widget(self):
         # ---- Outer Container ----
         self.label_frame = ctk.CTkFrame(self)
         self.label_frame.configure(fg_color="transparent")
@@ -34,7 +40,7 @@ class SettingsPage(ctk.CTkFrame):
         self.old_pass_input = ctk.CTkEntry(form_frame, show="*")
         self.old_pass_input.pack(anchor='w', padx=0, pady=5)
 
-        # ---- New and Confirm Password (Side by Side) ----
+        # ---- Frame: New and Confirm Password (Side by Side) ----
         password_row = ctk.CTkFrame(form_frame, fg_color="transparent")
         password_row.pack(anchor='w', pady=(10, 0), fill='x')
 
@@ -61,24 +67,43 @@ class SettingsPage(ctk.CTkFrame):
 
     # ============== Events ==============
     def handle_change_password(self):
-        # Validates and updates the password
+        employee_id = getattr(Session.current_user, 'employee_id', 'None')
+        if not employee_id:
+            messagebox.showerror("Error", "No user session found.")
+            log("[ERROR] Change password failed: No active user session")
+
+        db = DBManager()
+        user_auth_data = db.get_user_credentials(employee_id)
+
         old_pass = self.old_pass_input.get()
         new_pass = self.new_pass_input.get()
         confirm_pass = self.confirm_pass_input.get()
 
         if not old_pass or not new_pass or not confirm_pass:
-            messagebox.showwarning("Error", "All fields are required.")
+            message = "All fields are required."
+            messagebox.showwarning("Error", message)
+            log(f"Change password failed for ({employee_id}): {message}")
             return
-
         if new_pass != confirm_pass:
-            messagebox.showwarning("Error", "New passwords do not match.")
+            message = "New password and confirm password does not match."
+            messagebox.showwarning("Error", message)
+            log(f"Change password failed for ({employee_id}): {message}")
+            return
+        if old_pass == new_pass:
+            message = "New password cannot be the same as your old password."
+            messagebox.showwarning("Error", message)
+            log(f"Change password failed for ({employee_id}): {message}")
+            return
+        if old_pass != user_auth_data['PASSWORD']:
+            message = "Old password is incorrect."
+            messagebox.showwarning("Error", message)
+            log(f"Change password failed for ({employee_id}): {message}")
             return
 
-        # --- Simulated backend check ---
-        if old_pass == "current_password":
-            messagebox.showinfo("Success", "Password changed successfully.")
-            self.old_pass_input.delete(0, 'end')
-            self.new_pass_input.delete(0, 'end')
-            self.confirm_pass_input.delete(0, 'end')
-        else:
-            messagebox.showwarning("Error", "Current password is incorrect.")
+        db.update_user_credentials(employee_id, new_pass)
+        log(f"Password change successful for employee ID: {employee_id}")
+        messagebox.showinfo("Success", "Password updated successfully.")
+
+        self.old_pass_input.delete(0, 'end')
+        self.new_pass_input.delete(0, 'end')
+        self.confirm_pass_input.delete(0, 'end')
