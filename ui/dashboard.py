@@ -3,6 +3,7 @@ import customtkinter as ctk                 # customtkinter
 from ui.homescreen import HomeScreen        # home screen page
 from ui.settingsPage import SettingsPage    # settings page
 from utils.helpers import clear_screen
+from utils.session import Session
 
 
 # ============== Dashboard Page ==============
@@ -94,10 +95,13 @@ class Dashboard(ctk.CTkFrame):
         from ui.login_screen import LoginScreen
         from utils.session import Session
 
+        print(f"Logging Out: {Session.current_user.employee_id} - "
+              f"{Session.current_user.first_name} {Session.current_user.last_name}")
         Session.current_user = None
         clear_screen(self.master)
+
         login_screen = LoginScreen(self.master, self.master.on_login_success)
-        login_screen.pack(ill="both", expand=True)
+        login_screen.pack(fill="both", expand=True)
 
 
 # ============== Placeholder Pages ==============

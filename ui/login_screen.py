@@ -2,8 +2,6 @@
 import tkinter as tk                    # tkinter
 import customtkinter as ctk             # customtkinter
 from models.user import User            # backend logic for authentication
-from utils.session import Session
-from database.db_manager import DBManager
 
 
 # ============== Login Screen ==============
@@ -11,7 +9,6 @@ class LoginScreen(ctk.CTkFrame):
     def __init__(self, parent, dashboard_callback):
         super().__init__(parent)
 
-        self.db_manager = DBManager()
         self.callback = dashboard_callback  # function to call when login is successful
 
         self.create_widgets()           # initializes UI components
@@ -74,7 +71,7 @@ class LoginScreen(ctk.CTkFrame):
         user = User(employee_id)
 
         if user.login(password):
-            Session.current_user = employee_id
+            print(f"Login Success: {employee_id} - {user.first_name} {user.last_name}")
             self.callback()             # runs the on_login_success function (from main.py) inside callback
         else:
             tk.messagebox.showerror("Login Failed", "Invalid credentials.")

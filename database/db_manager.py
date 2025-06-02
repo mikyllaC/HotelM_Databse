@@ -1,15 +1,22 @@
 # ============== Imports ==============
 import sqlite3
 import os
-from asyncio import current_task
 
 
 def main():
     db = DBManager()
-    #db.add_employee("Samuel", "Muralid", "CEO")
-    #db.add_employee("Mikylla", "Coronado", "Front Desk")
-    #db.add_employee("Sofia", "Caday", "Janitor")
-    #db.add_employee("Zydney", "Astudillo", "Manager")
+    employee_data = {
+        "FIRST_NAME": "Samuel",
+        "LAST_NAME": "Muralid",
+        "POSITION": "CEO",
+        "HIRE_DATE": "2024-06-01",
+        "CONTACT_NUMBER": "1234567890",
+        "EMAIL": "samuel@hotel.com",
+        "DATE_OF_BIRTH": "2005-06-27",
+        "ADDRESS": "123 Amethyst St, Fern Village, QC"
+    }
+    #db.add_employee(employee_data)
+    #db.add_user_credentials("SM0001", 123)
 
 
 # ============== Database Manager Class ==============
@@ -25,7 +32,8 @@ class DBManager:
 
     def get_connection(self):
         conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row  # Enable dict-style row access
+        conn.row_factory = sqlite3.Row
+        # makes every row you fetch (with fetchone() or fetchall()) behave like a dictionary
         return conn
 
 
@@ -73,7 +81,7 @@ class DBManager:
             # SUBSTR(employee_id, 3) — skips the first two characters (the initials).
             # CAST(... AS INTEGER) — converts the numeric suffix to an integer.
             # Orders descending by this integer to find the max. LIMIT gets the max
-            result = cursor.fetchone()[0]
+            result = cursor.fetchone()
             print(f"Previous ID: {result}")
 
             if result: # if not the first employee
@@ -82,14 +90,14 @@ class DBManager:
             else:
                 new_id_num = 1
 
-            new_id = f"{initials}{new_id_num:03d}"  # ex: SM001
+            new_id = f"{initials}{new_id_num:04d}"  # ex: SM0001
             print(f"Generated ID: {new_id}")
             return new_id
 
 
-    def add_employee(self, first_name, last_name, position, hire_date=None, contact_number=None, email=None,
-                     date_of_birth=None, address=None, status="active"):
-        employee_id = self.generate_employee_id(first_name, last_name)
+    def add_employee(self, employee_data: dict):
+        employee_id = self.generate_employee_id(employee_data["FIRST_NAME"], employee_data["LAST_NAME"])
+        employee_data["employee_id"] = employee_id
 
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -97,8 +105,11 @@ class DBManager:
                 INSERT INTO EMPLOYEE (
                     EMPLOYEE_ID, FIRST_NAME, LAST_NAME, POSITION, HIRE_DATE, 
                     CONTACT_NUMBER, EMAIL, DATE_OF_BIRTH, ADDRESS, STATUS) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (employee_id, first_name, last_name, position, hire_date, contact_number,
-                          email, date_of_birth, address, status))
+                    """, (employee_id,
+                          employee_data.get("FIRST_NAME"),employee_data.get("LAST_NAME"),employee_data.get("POSITION"),
+                          employee_data.get("HIRE_DATE"),employee_data.get("CONTACT_NUMBER"),
+                          employee_data.get("EMAIL"),employee_data.get("DATE_OF_BIRTH"),
+                          employee_data.get("ADDRESS"),employee_data.get("STATUS", "active") ) )
             conn.commit()
         return employee_id
 
@@ -113,33 +124,21 @@ class DBManager:
             conn.commit()
 
 
-    def verify_login(self, employee_id, password):
-        with sqlite3.connect(self.db_path) as conn:
+    def get_user_credentials(self, employee_id):
+        with self.get_connection() as conn:
             cursor = conn.cursor()
-
             cursor.execute("""
-            SELECT ua.PASSWORD, e.*
-            FROM USER_AUTH ua
-            JOIN EMPLOYEE e ON ua.EMPLOYEE_ID = e.EMPLOYEE_ID
-            WHERE ua.EMPLOYEE_ID = ?
-            """, (employee_id, ))
-            user = cursor.fetchone()
-
-            if not user:
-                return None         # employee not found
-            if user['STATUS'] != 'active':
-                return None         # deactivated account
-            if user['PASSWORD'] != password:
-                return  None        # incorrect password
-
-            print(f"Login Successful: {user['EMAIL']}")
-            return {
-                "employee_id": user["EMPLOYEE_ID"],
-                "full_name": f"{user['FIRST_NAME']} {user['LAST_NAME']}",
-                "position": user["POSITION"],
-                "email": user["EMAIL"]
-            }
-
+            SELECT UA.PASSWORD, E.*
+            FROM USER_AUTH UA
+            JOIN EMPLOYEE E ON UA.EMPLOYEE_ID = E.EMPLOYEE_ID
+            WHERE UA.EMPLOYEE_ID = ?
+            """, (employee_id,))
+            # ua is a shorthand for the USER_AUTH table.
+            # e is a shorthand for the EMPLOYEE table.
+            # ua.PASSWORD → selects the PASSWORD column from the USER_AUTH table.
+            # e.* → selects all the columns from the EMPLOYEE table.
+            # joins the columns into 1 row for each employee, WHERE filters the EMPLOYEE_ID to only get 1 result
+            return cursor.fetchone()
 
 
 if __name__ == "__main__":
