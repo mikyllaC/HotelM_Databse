@@ -134,24 +134,23 @@ class AddStaffFrame(ctk.CTkFrame):
         
         # Address Entry
         address_label = ctk.CTkLabel(form_frame, 
-                         text="Address", 
-                         font=("Arial", 18, "bold"))
-        address_label.grid(row=5, 
-                   column=0, 
-                   padx=(20, 10),
-                   pady=(20, 0), 
-                   sticky="w", 
-                   columnspan=2)
+                 text="Address", 
+                 font=("Arial", 18, "bold"))
+        address_label.grid(row=3, 
+               column=5, 
+               padx=(20, 10),
+               pady=(20, 0), 
+               sticky="w", 
+               columnspan=2)
         address_entry = ctk.CTkEntry(form_frame, 
-             width=250,
+             width=400,
              font=("Arial", 16))
-        address_entry.grid_configure(columnspan=10)  # Span more columns to make it visually longer
-        address_entry.grid(row=6, 
-                   column=0, 
-                   padx=(20, 10), 
-                   pady=(0, 20), 
-                   sticky="w", 
-                   columnspan=2)
+        address_entry.grid(row=4, 
+               column=5, 
+               padx=(20, 10), 
+               pady=(0, 20), 
+               sticky="w", 
+               columnspan=2)
 
 
 
@@ -199,6 +198,30 @@ class AddStaffFrame(ctk.CTkFrame):
             font=("Arial", 16))
         emp_id_entry.grid(row=8,
             column=2,
+            padx=(20, 10),
+            pady=(0, 20),
+            sticky="w",
+            columnspan=2)
+        
+        # Employee Status
+        status_label = ctk.CTkLabel(form_frame,
+            text="Status",
+            font=("Arial", 18, "bold"))
+        status_label.grid(row=9,
+            column=0,
+            padx=(20, 10),
+            pady=(20, 0),
+            sticky="w",
+            columnspan=2)
+        status_options = ["Active", "Inactive", "On Leave"]
+        status_var = tk.StringVar(value=status_options[0])
+        status_dropdown = ctk.CTkComboBox(form_frame,
+            values=status_options,
+            variable=status_var,
+            width=250,
+            font=("Courier", 16))
+        status_dropdown.grid(row=10,
+            column=0,
             padx=(20, 10),
             pady=(0, 20),
             sticky="w",
