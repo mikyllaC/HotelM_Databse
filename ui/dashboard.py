@@ -10,6 +10,7 @@ from ui.billingPaymentPage import BillingPaymentPage
 from ui.staffMaintenancePage import StaffMaintenancePage
 from ui.settingsPage import SettingsPage
 
+from models.auth import AuthModel
 from utils.helpers import clear_screen, log
 
 
@@ -70,7 +71,7 @@ class Dashboard(ctk.CTkFrame):
                                            fg_color="#d9534f",      # Bootstrap-style red
                                            hover_color="#c9302c",   # Darker red on hover
                                            text_color="white",
-                                           command=self.logout )
+                                           command=self.logout_on_click )
         self.logout_button.pack(side="bottom", fill="x", padx=15, pady=20)
 
 
@@ -98,18 +99,6 @@ class Dashboard(ctk.CTkFrame):
 
 
     # ============== Logout Handler ==============
-    def logout(self):
-        from ui.login_screen import LoginScreen
-        from utils.session import Session
-
-        confirm = messagebox.askyesno("Log Out", "Are you sure you want to log out?")
-        if not confirm:
-            return  # if user cancels logout, do nothing
-
-        log(f"Logging out: {getattr(Session.current_user, 'employee_id', 'None')}")
-        Session.current_user = None
-
-        # clear dashboard and return to login screen
-        clear_screen(self.master)
-        login_screen = LoginScreen(self.master, self.master.on_login_success)
-        login_screen.pack(fill="both", expand=True)
+    def logout_on_click(self):
+        auth = AuthModel()
+        auth.logout(self.master)

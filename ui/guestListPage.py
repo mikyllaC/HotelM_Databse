@@ -3,11 +3,9 @@ import tkinter as tk
 
 ctk.set_appearance_mode("light")
 
-class GuestListApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
-        self.title("Guest List")
-        self.geometry("1024x738")
+class GuestListPage(ctk.CTkFrame):
+    def __init__(self, parent):
+        super().__init__(parent)
 
 #Placeholder Data 
         guest_data = [

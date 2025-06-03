@@ -1,8 +1,10 @@
 # ============== Imports ==============
-import tkinter as tk                    # tkinter
+from tkinter import messagebox
 import customtkinter as ctk             # customtkinter
-from models.user import User            # backend logic for authentication
+
+from models.auth import AuthModel
 from utils.helpers import log
+from utils.session import Session
 
 
 # ============== Login Screen ==============
@@ -11,13 +13,13 @@ class LoginScreen(ctk.CTkFrame):
         super().__init__(parent)
 
         self.callback = dashboard_callback  # function to call when login is successful
+        self.auth_model = AuthModel()
 
         self.create_widgets()           # initializes UI components
 
 
     # ============== Widget Creation ==============
     def create_widgets(self):
-
         # ---- Title Label ----
         self.title_label = ctk.CTkLabel(self,
                                   text="Hotel Management System",
@@ -66,7 +68,7 @@ class LoginScreen(ctk.CTkFrame):
 
     # ============== Events ==============
     def forgot_password(self):
-        tk.messagebox.showinfo("Forgot Password", "Password reset instructions will be sent to your email.")
+        messagebox.showinfo("Forgot Password", "Password reset instructions will be sent to your email.")
 
 
     def check_login(self, event=None):
@@ -74,17 +76,21 @@ class LoginScreen(ctk.CTkFrame):
         password = self.password_entry.get().strip()
 
         if not employee_id or not password:
-            tk.messagebox.showwarning("Missing Fields", "Please enter both Employee ID and Password.")
+            messagebox.showwarning("Missing Fields", "Please enter both Employee ID and Password.")
             log(f"Login attempt failed: Empty employee_id or password.")
             return
 
-        user = User(employee_id)
+        user = self.auth_model.login(employee_id=employee_id, password=password)
 
-        if user.login(password):
-            log(f"Login success: {employee_id} - {user.first_name} {user.last_name}")
+        if user:
+            Session.current_user = user
+
+            full_name = f"{user['FIRST_NAME']} {user['LAST_NAME']}"
+            log(f"Login success: [{employee_id}] - {full_name}")
+
             self.employee_id_entry.unbind("<Return>")
             self.password_entry.unbind("<Return>")
-            self.callback()             # runs the on_login_success function (from main.py) inside callback
+            self.callback()  # Proceed to dashboard
         else:
-            log(f"Login failed for employee id: {employee_id}")
-            tk.messagebox.showerror("Login Failed", "Invalid credentials.")
+            log(f"Login failed for employee id: [{employee_id}]")
+            messagebox.showerror("Login Failed", "Invalid credentials.")
