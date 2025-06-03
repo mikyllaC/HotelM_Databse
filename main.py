@@ -25,7 +25,7 @@ class Application(ctk.CTk):
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        self.skip_login = False          # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
+        self.skip_login = True         # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
         if self.skip_login:
             log("[DEV] Login skipped manually.")
             self.on_login_success()     # skip login screen

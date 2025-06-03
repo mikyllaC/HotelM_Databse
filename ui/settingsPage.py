@@ -9,13 +9,14 @@ from utils.helpers import log
 # ============== Settings Page ==============
 class SettingsPage(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color="#e6e6e6")
+        super().__init__(parent)
 
         self.create_widget()
 
 
     # ============== Widget Creation ==============
     def create_widget(self):
+        self.configure(fg_color="#f0f0f0")
         # ---- Outer Container ----
         self.label_frame = ctk.CTkFrame(self)
         self.label_frame.configure(fg_color="transparent")
