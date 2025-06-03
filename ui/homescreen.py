@@ -5,7 +5,7 @@ import customtkinter as ctk  # customtkinter for modern UI
 # ============== Home Screen ==============
 class HomeScreenPage(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color="#e6e6e6")
+        super().__init__(parent, fg_color="#f0f0f0")
         self.create_widgets()  # initialize UI components
 
         # ============== UI Setup ==============

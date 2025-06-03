@@ -3,7 +3,6 @@ import customtkinter as ctk             # customtkinter
 from ui.dashboard import Dashboard      # dashboard screen
 from ui.login_screen import LoginScreen # login screen
 from utils.helpers import clear_screen, log
-from utils.session import Session
 
 
 def main():
@@ -26,7 +25,7 @@ class Application(ctk.CTk):
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        self.skip_login = True          # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
+        self.skip_login = True         # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
         if self.skip_login:
             log("[DEV] Login skipped manually.")
             self.on_login_success()     # skip login screen
@@ -52,7 +51,12 @@ class Application(ctk.CTk):
 
     def on_closing(self):
         # Logs out user on application close
-        log(f"Logging out: {getattr(Session.current_user, 'employee_id', 'None')}")
+        from utils.session import Session
+
+        if Session.current_user:
+            log(f"Logging out: [{Session.current_user.get('EMPLOYEE_ID', 'Unknown')}]")
+        else:
+            log("Logging out: No user currently in session.")
         Session.current_user = None
         log("Application closing.")
         self.destroy()
