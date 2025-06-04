@@ -28,8 +28,13 @@ class CreateReservation(ctk.CTkFrame):
                              fill="both")
 
         #Button
-        self.bottom_frame = ctk.CTkFrame(self, fg_color="transparent", height=100)
-        self.bottom_frame.pack(anchor="center", pady=(10,20), padx=20, fill="x")
+        self.bottom_frame = ctk.CTkFrame(self, 
+                                         fg_color="transparent", 
+                                         height=100)
+        self.bottom_frame.pack(anchor="center", 
+                               pady=(10,20), 
+                               padx=20, 
+                               fill="x")
 
         self.create_button = ctk.CTkButton(
             self.bottom_frame,
@@ -38,6 +43,17 @@ class CreateReservation(ctk.CTkFrame):
             height=40
         )
         self.create_button.pack(side="right", padx=20)
+
+        self.cancel_button = ctk.CTkButton(
+            self.bottom_frame,
+            text="Cancel",
+            font=("Arial", 16, "bold"),
+            width=200,
+            height=40,
+            command=self.master.destroy
+            , fg_color="#b0b0b0"
+        )
+        self.cancel_button.pack(side="right", padx=10)
 
 if __name__ == "__main__":
     root = ctk.CTk()
