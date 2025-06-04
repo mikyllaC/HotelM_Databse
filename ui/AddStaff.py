@@ -25,7 +25,6 @@ class AddStaffFrame(ctk.CTkFrame):
                         padx=(40,40), 
                         fill="x", 
                         expand=False)
-        form_frame.pack_propagate(False)  # Prevent frame from shrinking to fit its contents *Still shrinks, still fixing it
 
         #First Name Name
         Fname_label = ctk.CTkLabel(form_frame, text="First Name", 
@@ -36,14 +35,14 @@ class AddStaffFrame(ctk.CTkFrame):
                         sticky="w", 
                         columnspan=2)
         Fname_entry = ctk.CTkEntry(form_frame, 
-                                  width=200, 
+                                  width=220, 
                                   font=("Arial", 16))
         Fname_entry.grid(row=1, 
                         column=0, 
                         padx=(20, 10), 
                         pady=(0, 20), 
                         sticky="w", 
-                        columnspan=2)
+                        columnspan=3)
 
         #Last Name
         Lname_label = ctk.CTkLabel(form_frame, 
@@ -56,21 +55,14 @@ class AddStaffFrame(ctk.CTkFrame):
              sticky="w", 
              columnspan=2)
         Lname_entry = ctk.CTkEntry(form_frame, 
-                       width=200, 
+                       width=220, 
                        font=("Arial", 16))
         Lname_entry.grid(row=1, 
-                 column=1, 
+                 column=2, 
                  padx=(20, 10), 
                  pady=(0, 20), 
                  sticky="w", 
-                 columnspan=2)
-        
-        Lname_entry.grid(row=1, 
-                      column=2, 
-                      padx=(20, 10), 
-                      pady=(0, 20), 
-                      sticky="w", 
-                      columnspan=2)
+                 columnspan=3)
         
         
         #Date of Birth
@@ -136,8 +128,8 @@ class AddStaffFrame(ctk.CTkFrame):
         address_label = ctk.CTkLabel(form_frame, 
                  text="Address", 
                  font=("Arial", 18, "bold"))
-        address_label.grid(row=3, 
-               column=5, 
+        address_label.grid(row=6, 
+               column=0, 
                padx=(20, 10),
                pady=(20, 0), 
                sticky="w", 
@@ -145,20 +137,18 @@ class AddStaffFrame(ctk.CTkFrame):
         address_entry = ctk.CTkEntry(form_frame, 
              width=400,
              font=("Arial", 16))
-        address_entry.grid(row=4, 
-               column=5, 
+        address_entry.grid(row=7, 
+               column=0, 
                padx=(20, 10), 
                pady=(0, 20), 
                sticky="w", 
-               columnspan=2)
+               columnspan=10)
 
-
-
-        # Position 
+                  # Position 
         position_label = ctk.CTkLabel(form_frame, 
                           text="Position:", 
                           font=("Arial", 18, "bold"))
-        position_label.grid(row=7, 
+        position_label.grid(row=8, 
                     column=0, 
                     padx=(20, 10), 
                     pady=(20, 0), 
@@ -176,7 +166,7 @@ class AddStaffFrame(ctk.CTkFrame):
                             variable=position_var, 
                             width=250, 
                             font=("Courier", 16))
-        position_dropdown.grid(row=8, 
+        position_dropdown.grid(row=9, 
                        column=0, 
                        padx=(20, 10), 
                        pady=(0, 20), 
@@ -187,7 +177,7 @@ class AddStaffFrame(ctk.CTkFrame):
         emp_id_label = ctk.CTkLabel(form_frame,
             text="Employee ID",
             font=("Arial", 18, "bold"))
-        emp_id_label.grid(row=7,
+        emp_id_label.grid(row=8,
             column=2,
             padx=(20, 10),
             pady=(20, 0),
@@ -196,18 +186,18 @@ class AddStaffFrame(ctk.CTkFrame):
         emp_id_entry = ctk.CTkEntry(form_frame,
             width=200,
             font=("Arial", 16))
-        emp_id_entry.grid(row=8,
+        emp_id_entry.grid(row=9,
             column=2,
             padx=(20, 10),
             pady=(0, 20),
             sticky="w",
-            columnspan=2)
+            columnspan=3)
         
         # Employee Status
         status_label = ctk.CTkLabel(form_frame,
             text="Status",
             font=("Arial", 18, "bold"))
-        status_label.grid(row=9,
+        status_label.grid(row=10,
             column=0,
             padx=(20, 10),
             pady=(20, 0),
@@ -220,12 +210,12 @@ class AddStaffFrame(ctk.CTkFrame):
             variable=status_var,
             width=250,
             font=("Courier", 16))
-        status_dropdown.grid(row=10,
+        status_dropdown.grid(row=11,
             column=0,
             padx=(20, 10),
             pady=(0, 20),
             sticky="w",
-            columnspan=2)
+            columnspan=3)
    
     #Frame for button
         below_frame = ctk.CTkFrame(self, 
