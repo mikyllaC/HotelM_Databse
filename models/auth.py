@@ -5,6 +5,23 @@ from utils.helpers import log, get_connection, clear_screen
 
 
 class AuthModel:
+    def __init__(self):
+        self.create_auth_table()
+
+
+    def create_auth_table(self):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+
+            conn.execute("""
+                   CREATE TABLE IF NOT EXISTS USER_AUTH (
+                       EMPLOYEE_ID TEXT PRIMARY KEY,
+                       PASSWORD TEXT NOT NULL,
+                       FOREIGN KEY (EMPLOYEE_ID) REFERENCES EMPLOYEE(EMPLOYEE_ID))""")
+
+            conn.commit()
+
+
     def add_user_credentials(self, employee_id, first_name, last_name, hire_date, password=None):
         if not password:
             default_password = self.generate_default_password(first_name, last_name, hire_date)
@@ -77,7 +94,7 @@ class AuthModel:
 
 
     def logout(self, parent):
-        from ui.login_screen import LoginScreen
+        from ui.auth.loginScreen import LoginScreen
         from utils.session import Session
 
         confirm = messagebox.askyesno("Log Out", "Are you sure you want to log out?")
