@@ -1,13 +1,17 @@
 # ============== Imports ==============
-import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import customtkinter as ctk
+
+from models.employee import EmployeeModel
+from ui.staff.addStaff import AddStaffFrame
+from ui.staff.editStaff import EditStaffFrame
 
 
 # ============== Staff Maintenance Page ==============
 class StaffMaintenancePage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
+        self.employee_model = EmployeeModel()
         self.create_widgets()
 
     # ============== Widget Creation ==============
@@ -73,24 +77,25 @@ class StaffMaintenancePage(ctk.CTkFrame):
                                    command=self.assign_staff_popup)
         assign_btn.pack(side="right", padx=(20, 10), pady=10)
 
-        # Add Staff Button (to be implemented later)
+        # Add Staff Button
         add_btn = ctk.CTkButton(button_frame,
                                 text="Add Staff",
                                 font=("Arial", 15, "bold"),
                                 text_color="white",
                                 width=200,
-                                height=40)
+                                height=40,
+                                command=self.add_staff_popup)
         add_btn.pack(side="right", padx=(20, 10), pady=10)
 
         # Remove Staff Button
-        remove_btn = ctk.CTkButton(button_frame,
-                                   text="Remove Staff",
+        update_btn = ctk.CTkButton(button_frame,
+                                   text="Edit Staff",
                                    font=("Arial", 15, "bold"),
                                    text_color="white",
                                    width=200,
                                    height=40,
-                                   command=self.remove_staff_popup)
-        remove_btn.pack(side="right", padx=(20, 10), pady=10)
+                                   command=self.edit_staff_popup)
+        update_btn.pack(side="right", padx=(20, 10), pady=10)
 
         # ========== Staff Table ==========
         table_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -107,16 +112,17 @@ class StaffMaintenancePage(ctk.CTkFrame):
             self.tree.heading(col, text=col, anchor="w")
             self.tree.column(col, anchor="w", width=150)
 
-        # Sample static data
-        sample_data = [
-            ("Sunday Dimagiba", "000-000-00", "Cleaning", "Floor 12", "Available"),
-            ("John Doe", "111-111-11", "Maintenance", "Floor 5", "Busy"),
-            ("Jane Smith", "222-222-22", "Cleaning", "Floor 3", "Available"),
-            ("Alice Johnson", "333-333-33", "Maintenance", "Floor 8", "Available"),
-            ("Bob Brown", "444-444-44", "Cleaning", "Floor 10", "Busy"),
-        ]
-        for row in sample_data:
-            self.tree.insert("", "end", values=row)
+        # # Sample static data
+        # sample_data = [
+        #     ("Sunday Dimagiba", "000-000-00", "Cleaning", "Floor 12", "Available"),
+        #     ("John Doe", "111-111-11", "Maintenance", "Floor 5", "Busy"),
+        #     ("Jane Smith", "222-222-22", "Cleaning", "Floor 3", "Available"),
+        #     ("Alice Johnson", "333-333-33", "Maintenance", "Floor 8", "Available"),
+        #     ("Bob Brown", "444-444-44", "Cleaning", "Floor 10", "Busy"),
+        # ]
+        # for row in sample_data:
+        #     self.tree.insert("", "end", values=row)
+        self.populate_staff_list()
 
         self.tree.tag_configure("highlighted", background="#b3e6ff")
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
@@ -128,6 +134,7 @@ class StaffMaintenancePage(ctk.CTkFrame):
         popup.title("Assign Staff")
         popup.geometry("400x250")
         popup._apply_appearance_mode("light")
+        popup.grab_set()
 
         ctk.CTkLabel(popup, text="Assign Staff to Room", font=("Arial", 16, "bold")).pack(pady=(20, 10))
 
@@ -137,7 +144,7 @@ class StaffMaintenancePage(ctk.CTkFrame):
 
         ctk.CTkLabel(popup, text="Room/Floor:", font=("Arial", 13)).pack(pady=(10, 0))
         room_options = [f"Floor {i}" for i in range(1, 13)]
-        room_var = tk.StringVar(value=room_options[0])
+        room_var = ctk.StringVar(value=room_options[0])
 
         try:
             room_dropdown = ctk.CTkComboBox(popup, variable=room_var, values=room_options,
@@ -157,27 +164,59 @@ class StaffMaintenancePage(ctk.CTkFrame):
         ctk.CTkButton(popup, text="Assign", command=on_assign).pack(pady=(15, 5))
         ctk.CTkButton(popup, text="Cancel", command=popup.destroy, fg_color="gray").pack()
 
-    # ========== Remove Staff Popup ==========
-    def remove_staff_popup(self):
+
+    def populate_staff_list(self):
+        # Clear existing rows
+        for row in self.tree.get_children():
+            self.tree.delete(row)
+
+        try:
+            employee_data = self.employee_model.get_all_employees()
+            for employee in employee_data:
+                # Convert sqlite3.Row to tuple so it shows correctly in the Treeview
+                full_name = f"{employee['FIRST_NAME']} {employee['LAST_NAME']}"
+                self.tree.insert("", "end", values=(
+                    full_name,
+                    employee["EMPLOYEE_ID"],
+                    employee["POSITION"],
+                    employee["ASSIGNED_TO"],
+                    employee["STATUS"]
+                ))
+        except Exception as e:
+            messagebox.showerror("Database Error", f"Failed to load employee data.\n{str(e)}")
+
+
+    def add_staff_popup(self):
         popup = ctk.CTkToplevel(self)
-        popup.title("Remove Staff")
-        popup.geometry("350x180")
-        popup._apply_appearance_mode("light")
+        popup.title("Add New Staff")
+        popup.geometry("800x800")
+        frame = AddStaffFrame(parent=popup)
+        frame.pack(fill="both", expand=True)
+        popup.grab_set() # used to capture all events (like mouse and keyboard input) to the popup window
+        # When you call .grab_set() on a widget (usually a Toplevel), it:
+        # Prevents the user from interacting with any other windows in the application
+        # until that widget/window is closed or .grab_release() is called.
 
-        ctk.CTkLabel(popup, text="Enter Staff ID to remove:", font=("Arial", 14)).pack(pady=(20, 10))
-        entry = ctk.CTkEntry(popup, width=200)
-        entry.pack(pady=5)
 
-        def on_remove():
-            staff_id = entry.get()
-            # TODO: Add logic to remove staff from the table
-            print(f"[LOG] Removed staff with ID {staff_id}")
-            popup.destroy()
+    def edit_staff_popup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Edit Staff Details")
+        popup.geometry("600x900")
+        popup.grab_set()
 
-        ctk.CTkButton(popup, text="Remove", command=on_remove).pack(pady=(15, 5))
-        ctk.CTkButton(popup, text="Cancel", command=popup.destroy, fg_color="gray").pack()
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No selection", "Please select a staff member to update.")
+            return
 
-    # ========== Table Row Selection Handler ==========
+        selected_item = self.tree.item(selected[0])
+        staff_id = selected_item["values"][1]  # Assuming Staff ID is the 2nd column
+
+        frame = EditStaffFrame(parent_popup=popup, employee_id=staff_id, parent_page=self)
+        frame.pack(fill="both", expand=True)
+
+
+
     def on_tree_select(self, event):
         # Clear all tags first
         for item in self.tree.get_children():
@@ -192,6 +231,11 @@ if __name__ == "__main__":
     root = ctk.CTk()
     root.geometry("900x700")
     root.title("Staff Maintenance Test")
+
+    ctk.set_appearance_mode("light")    # set overall appearance mode: light/dark/system
+    ctk.set_default_color_theme("blue") # set default color theme
+
     page = StaffMaintenancePage(root)
     page.pack(fill="both", expand=True)
+
     root.mainloop()

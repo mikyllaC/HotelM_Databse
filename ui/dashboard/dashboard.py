@@ -1,17 +1,15 @@
 # ============== Imports ==============
 import customtkinter as ctk                 # customtkinter'
-from tkinter import messagebox
 
-from ui.homescreen import HomeScreenPage
-from ui.roomManagementPage import RoomManagementPage
-from ui.guestListPage import GuestListPage
-from ui.reservationsPage import ReservationsPage
-from ui.billingPaymentPage import BillingPaymentPage
-from ui.staffMaintenancePage import StaffMaintenancePage
-from ui.settingsPage import SettingsPage
+from ui.home.homeScreenPage import HomeScreenPage
+from ui.rooms.roomManagementPage import RoomManagementPage
+from ui.guests.guestListPage import GuestListPage
+from ui.reservations.reservationsPage import ReservationsPage
+from ui.billing.billingPaymentPage import BillingPaymentPage
+from ui.staff.staffMaintenancePage import StaffMaintenancePage
+from ui.settings.settingsPage import SettingsPage
 
 from models.auth import AuthModel
-from utils.helpers import clear_screen, log
 
 
 # ============== Dashboard Page ==============
