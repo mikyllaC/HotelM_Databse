@@ -1,9 +1,8 @@
 # ============== Imports ==============
-from doctest import master
 from tkinter import ttk
 import customtkinter as ctk
 
-from ui.addStaff import AddStaffFrame
+from ui.staff.addStaff import AddStaffFrame
 
 
 # ============== Staff Maintenance Page ==============

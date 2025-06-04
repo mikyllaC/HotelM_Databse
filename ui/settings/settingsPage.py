@@ -1,6 +1,7 @@
 # ============== Imports ==============
 import customtkinter as ctk
 from tkinter import messagebox
+
 from database.db_manager import DBManager
 from utils.session import Session
 from utils.helpers import log
