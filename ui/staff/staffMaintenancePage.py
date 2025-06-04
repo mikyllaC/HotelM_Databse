@@ -1,7 +1,9 @@
 # ============== Imports ==============
-import tkinter as tk
+from doctest import master
 from tkinter import ttk
 import customtkinter as ctk
+
+from ui.addStaff import AddStaffFrame
 
 
 # ============== Staff Maintenance Page ==============
@@ -73,13 +75,14 @@ class StaffMaintenancePage(ctk.CTkFrame):
                                    command=self.assign_staff_popup)
         assign_btn.pack(side="right", padx=(20, 10), pady=10)
 
-        # Add Staff Button (to be implemented later)
+        # Add Staff Button
         add_btn = ctk.CTkButton(button_frame,
                                 text="Add Staff",
                                 font=("Arial", 15, "bold"),
                                 text_color="white",
                                 width=200,
-                                height=40)
+                                height=40,
+                                command=self.add_staff_popup)
         add_btn.pack(side="right", padx=(20, 10), pady=10)
 
         # Remove Staff Button
@@ -137,7 +140,7 @@ class StaffMaintenancePage(ctk.CTkFrame):
 
         ctk.CTkLabel(popup, text="Room/Floor:", font=("Arial", 13)).pack(pady=(10, 0))
         room_options = [f"Floor {i}" for i in range(1, 13)]
-        room_var = tk.StringVar(value=room_options[0])
+        room_var = ctk.StringVar(value=room_options[0])
 
         try:
             room_dropdown = ctk.CTkComboBox(popup, variable=room_var, values=room_options,
@@ -156,6 +159,19 @@ class StaffMaintenancePage(ctk.CTkFrame):
 
         ctk.CTkButton(popup, text="Assign", command=on_assign).pack(pady=(15, 5))
         ctk.CTkButton(popup, text="Cancel", command=popup.destroy, fg_color="gray").pack()
+
+
+    def add_staff_popup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Add New Staff")
+        popup.geometry("1200x800")
+        frame = AddStaffFrame(master=popup)
+        frame.pack(fill="both", expand=True)
+        popup.grab_set() # used to capture all events (like mouse and keyboard input) to the popup window
+        # When you call .grab_set() on a widget (usually a Toplevel), it:
+        # Prevents the user from interacting with any other windows in the application
+        # until that widget/window is closed or .grab_release() is called.
+
 
     # ========== Remove Staff Popup ==========
     def remove_staff_popup(self):
