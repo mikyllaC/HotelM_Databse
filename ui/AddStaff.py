@@ -144,13 +144,15 @@ class AddStaffFrame(ctk.CTkFrame):
                sticky="w", 
                columnspan=2)
 
-
+            # Add border (separator) between contact/email/address and position/employee id/status
+        separator = ttk.Separator(form_frame, orient="horizontal")
+        separator.grid(row=6, column=0, columnspan=8, sticky="ew", padx=10, pady=(30, 10))
 
         # Position 
         position_label = ctk.CTkLabel(form_frame, 
                           text="Position:", 
                           font=("Arial", 18, "bold"))
-        position_label.grid(row=7, 
+        position_label.grid(row=8, 
                     column=0, 
                     padx=(20, 10), 
                     pady=(20, 0), 
@@ -168,7 +170,7 @@ class AddStaffFrame(ctk.CTkFrame):
                             variable=position_var, 
                             width=250, 
                             font=("Courier", 16))
-        position_dropdown.grid(row=8, 
+        position_dropdown.grid(row=9, 
                        column=0, 
                        padx=(20, 10), 
                        pady=(0, 20), 
@@ -179,7 +181,7 @@ class AddStaffFrame(ctk.CTkFrame):
         emp_id_label = ctk.CTkLabel(form_frame,
             text="Employee ID",
             font=("Arial", 18, "bold"))
-        emp_id_label.grid(row=7,
+        emp_id_label.grid(row=8,
             column=2,
             padx=(20, 10),
             pady=(20, 0),
@@ -188,18 +190,18 @@ class AddStaffFrame(ctk.CTkFrame):
         emp_id_entry = ctk.CTkEntry(form_frame,
             width=200,
             font=("Arial", 16))
-        emp_id_entry.grid(row=8,
+        emp_id_entry.grid(row=9,
             column=2,
             padx=(20, 10),
             pady=(0, 20),
             sticky="w",
-            columnspan=2)
+            columnspan=3)
         
         # Employee Status
         status_label = ctk.CTkLabel(form_frame,
             text="Status",
             font=("Arial", 18, "bold"))
-        status_label.grid(row=9,
+        status_label.grid(row=10,
             column=0,
             padx=(20, 10),
             pady=(20, 0),
@@ -212,12 +214,12 @@ class AddStaffFrame(ctk.CTkFrame):
             variable=status_var,
             width=250,
             font=("Courier", 16))
-        status_dropdown.grid(row=10,
+        status_dropdown.grid(row=11,
             column=0,
             padx=(20, 10),
             pady=(0, 20),
             sticky="w",
-            columnspan=2)
+            columnspan=3)
    
     #Frame for button
         below_frame = ctk.CTkFrame(self, 
