@@ -35,14 +35,14 @@ class AddStaffFrame(ctk.CTkFrame):
                         sticky="w", 
                         columnspan=2)
         Fname_entry = ctk.CTkEntry(form_frame, 
-                                  width=200, 
+                                  width=220, 
                                   font=("Arial", 16))
         Fname_entry.grid(row=1, 
                         column=0, 
                         padx=(20, 10), 
                         pady=(0, 20), 
                         sticky="w", 
-                        columnspan=2)
+                        columnspan=3)
 
         #Last Name
         Lname_label = ctk.CTkLabel(form_frame, 
@@ -55,14 +55,14 @@ class AddStaffFrame(ctk.CTkFrame):
              sticky="w", 
              columnspan=2)
         Lname_entry = ctk.CTkEntry(form_frame, 
-                       width=200, 
+                       width=220, 
                        font=("Arial", 16))
         Lname_entry.grid(row=1, 
                  column=2, 
                  padx=(20, 10), 
                  pady=(0, 20), 
                  sticky="w", 
-                 columnspan=2)
+                 columnspan=3)
         
         
         #Date of Birth
@@ -128,8 +128,8 @@ class AddStaffFrame(ctk.CTkFrame):
         address_label = ctk.CTkLabel(form_frame, 
                  text="Address", 
                  font=("Arial", 18, "bold"))
-        address_label.grid(row=3, 
-               column=5, 
+        address_label.grid(row=6, 
+               column=0, 
                padx=(20, 10),
                pady=(20, 0), 
                sticky="w", 
@@ -137,18 +137,14 @@ class AddStaffFrame(ctk.CTkFrame):
         address_entry = ctk.CTkEntry(form_frame, 
              width=400,
              font=("Arial", 16))
-        address_entry.grid(row=4, 
-               column=5, 
+        address_entry.grid(row=7, 
+               column=0, 
                padx=(20, 10), 
                pady=(0, 20), 
                sticky="w", 
-               columnspan=2)
+               columnspan=10)
 
-            # Add border (separator) between contact/email/address and position/employee id/status
-        separator = ttk.Separator(form_frame, orient="horizontal")
-        separator.grid(row=6, column=0, columnspan=8, sticky="ew", padx=10, pady=(30, 10))
-
-        # Position 
+                  # Position 
         position_label = ctk.CTkLabel(form_frame, 
                           text="Position:", 
                           font=("Arial", 18, "bold"))
