@@ -25,7 +25,6 @@ class AddStaffFrame(ctk.CTkFrame):
                         padx=(40,40), 
                         fill="x", 
                         expand=False)
-        form_frame.pack_propagate(False)  # Prevent frame from shrinking to fit its contents *Still shrinks, still fixing it
 
         #First Name Name
         Fname_label = ctk.CTkLabel(form_frame, text="First Name", 
@@ -59,18 +58,11 @@ class AddStaffFrame(ctk.CTkFrame):
                        width=200, 
                        font=("Arial", 16))
         Lname_entry.grid(row=1, 
-                 column=1, 
+                 column=2, 
                  padx=(20, 10), 
                  pady=(0, 20), 
                  sticky="w", 
                  columnspan=2)
-        
-        Lname_entry.grid(row=1, 
-                      column=2, 
-                      padx=(20, 10), 
-                      pady=(0, 20), 
-                      sticky="w", 
-                      columnspan=2)
         
         
         #Date of Birth
