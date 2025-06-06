@@ -3,41 +3,94 @@ from tkinter import ttk, messagebox
 from datetime import datetime
 import random
 
+#Notes ni Sofia: 
+#1. Update button leads to a pop-up window where employee
+# can update billing information.
+#2. View invoice button leads to the billing breakdown GUI.
+#The UI dapat ng breakdown is ilalagay ko nalang sa billing breakdown GUI.
+#Magiging double kasi if may create din dito, sa create reservation dapat mag ppull ng info
+
 ctk.set_appearance_mode("light")  # or "dark"
 ctk.set_default_color_theme("blue")
 
-# Main window
 root = ctk.CTk()
 root.title("Billing & Payment")
-root.geometry("900x600")
+root.geometry("1600x800")
 
-# Sample data for billing history
 billing_data = []
 
-# Main content area
-main_frame = ctk.CTkFrame(root, 
-                          fg_color="#F5F5F5")
-main_frame.pack(fill="both", 
-                expand=True)
+main_frame = ctk.CTkFrame(root, fg_color="#F5F5F5")
+main_frame.pack(fill="both", expand=True)
 
-# Billing History
-billing_frame = ctk.CTkFrame(main_frame, 
-                             fg_color="#FFFFFF", 
-                             border_width=1, 
-                             border_color="#CCCCCC")
-billing_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+billing_frame = ctk.CTkFrame(main_frame, fg_color="transparent", 
+                             )
+billing_frame.pack(side="left", 
+                   fill="both", 
+                   expand=True, 
+                   padx=10, 
+                   pady=20)
 
-billing_label = ctk.CTkLabel(billing_frame, text="Billing History", font=("Arial", 14, "bold"), text_color="#222")
-billing_label.pack(anchor="w", padx=10, pady=5)
+billing_label = ctk.CTkLabel(billing_frame,
+                             text="Billing History",
+                             font=("Arial", 20, "bold"),
+                             text_color="#222")
+billing_label.pack(anchor="w", padx=10, pady=10)
 
-# Billing history table (still using ttk)
-columns = ("Invoice No.", "Guest Name", "Room Type", "Nights", "Amount", "Status", "Action")
+#Billing History list
+columns = ("Invoice No.", "Guest Name", "Nights", "Amount", "Status")
+
+#I can't display categories to the left for some reason, it ruins the pop up 
+# on the invoice information frame - Sofia
+style = ttk.Style()
+style.configure("Treeview.Heading", font=("Arial", 15, "bold"), anchor="w")
+style.configure("Treeview", rowheight=35)
+style.layout("Treeview", [
+    ('Treeview.treearea', {'sticky': 'nswe'})
+])
+style.configure("Treeview", font=("Arial", 15))
 tree = ttk.Treeview(billing_frame, columns=columns, show="headings", height=5)
 for col in columns:
     tree.heading(col, text=col)
     tree.column(col, width=90)
 tree.pack(fill="both", padx=10, pady=5)
 
+# Add placeholder billing data
+billing_data = [
+    (f"INV{1000+i}", f"Guest {i+1}", "Deluxe", random.randint(1, 5), random.randint(2000, 8000), random.choice(["Pending", "Paid"]))
+    for i in range(5)
+]
+
+def show_invoice_frame(event=None):
+    selected = tree.focus()
+    if not selected:
+        messagebox.showwarning("No selection", "Please select an invoice to view.")
+        return
+    values = tree.item(selected, "values")
+    if not values:
+        messagebox.showwarning("No selection", "Please select an invoice to view.")
+        return
+    for data in billing_data:
+        if str(data[0]) == str(values[0]):
+            fill_invoice_fields(data)
+            break
+    invoice_frame.pack(side="right", fill="y", padx=10, pady=20)
+
+# Button is having trouble moving on top of the treeview
+button_above_tree_frame = ctk.CTkFrame(billing_frame, fg_color="transparent")
+button_above_tree_frame.pack(fill="x", padx=10, pady=(0, 5))
+
+view_invoice_btn = ctk.CTkButton(
+    button_above_tree_frame,
+    text="View Invoice Information",
+    fg_color="#4A90E2",
+    text_color="white",
+    font=("Arial", 16, "bold"),
+    command=show_invoice_frame
+)
+view_invoice_btn.pack(anchor="nw", padx=10, pady=5)
+
+
+#Logic for list *Can be changed if needed
 def populate_billing_history():
     for item in tree.get_children():
         tree.delete(item)
@@ -60,193 +113,253 @@ def update_status(event):
 
 tree.bind("<Double-1>", update_status)
 
-# Invoice Generation
-invoice_frame = ctk.CTkFrame(main_frame, fg_color="#FFFFFF", border_width=1, border_color="#CCCCCC")
-invoice_frame.pack(side="left", fill="both", expand=True, padx=10, pady=10)
+#Invoice information frame 
 
-invoice_label = ctk.CTkLabel(invoice_frame, text="Invoice Generation", font=("Arial", 14, "bold"), text_color="#222")
-invoice_label.pack(anchor="w", padx=10, pady=5)
+invoice_frame = ctk.CTkFrame(main_frame, 
+                             fg_color="#FFFFFF", 
+                             border_width=1, 
+                             border_color="#CCCCCC")
 
-invoice_number = "INV505"
-ctk.CTkLabel(invoice_frame, text=f"INVOICE {invoice_number}", font=("Arial", 11), text_color="#333").pack(anchor="w", padx=10)
+#Label
+# Close button for Invoice Information frame
+def close_invoice_frame():
+    invoice_frame.pack_forget()
 
-# Guest Info
-guest_frame = ctk.CTkFrame(invoice_frame, fg_color="#FFFFFF")
-guest_frame.pack(fill="x", padx=10)
-ctk.CTkLabel(guest_frame, text="GUEST INFORMATION", font=("Arial", 11, "bold")).pack(anchor="w")
+# Create a frame to hold the invoice label and close button side by side
+invoice_header_frame = ctk.CTkFrame(invoice_frame, fg_color="transparent",)
+invoice_header_frame.pack(fill="x", padx=10, pady=(10, 10))
 
-name_label = ctk.CTkLabel(guest_frame, text="Name:")
-name_label.pack(anchor="w")
-name_entry = ctk.CTkEntry(guest_frame)
-name_entry.pack(anchor="w")
-name_entry.insert(0, "Emily Johnson")
+invoice_label = ctk.CTkLabel(invoice_header_frame, text="Invoice Information",
+                             font=("Arial", 20, "bold"), 
+                             text_color="#222")
+invoice_label.pack(side="left", anchor="w", padx=20, pady=(0,5))
 
-address_label = ctk.CTkLabel(guest_frame, text="Address:")
-address_label.pack(anchor="w")
-address_entry = ctk.CTkEntry(guest_frame)
-address_entry.pack(anchor="w")
-address_entry.insert(0, "456 Pine Road, Seattle, WA 98101")
+close_btn = ctk.CTkButton(
+    invoice_header_frame,
+    text="X",
+    fg_color="#E74C3C",
+    text_color="white",
+    font=("Arial", 12, "bold"),
+    width=30,
+    height=25,
+    command=close_invoice_frame
+)
+close_btn.pack(side="right", anchor="e", padx=10, pady=5)
 
-contact_label = ctk.CTkLabel(guest_frame, text="Contact Number:")
-contact_label.pack(anchor="w")
-contact_entry = ctk.CTkEntry(guest_frame)
-contact_entry.pack(anchor="w")
-contact_entry.insert(0, "+1 (206) 555-7890")
+selected_invoice_number = ctk.CTkLabel(invoice_frame, text="Invoice No: -",
+                                       font=("Arial", 16), 
+                                       text_color="#333")
+selected_invoice_number.pack(anchor="w", padx=20)
 
-# Booking Info
-booking_frame = ctk.CTkFrame(invoice_frame, fg_color="#FFFFFF")
-booking_frame.pack(fill="x", padx=10, pady=5)
-ctk.CTkLabel(booking_frame, text="BOOKING INFORMATION", font=("Arial", 11, "bold")).pack(anchor="w")
+# Guest and Booking Information
+guest_frame = ctk.CTkFrame(invoice_frame, 
+                           fg_color="#FFFFFF")
+guest_frame.pack(fill="x", padx=20)
+ctk.CTkLabel(guest_frame, text="Guest Information", 
+             font=("Arial", 18, "bold")).pack(anchor="w")
 
-check_in_label = ctk.CTkLabel(booking_frame, text="Check in (YYYY-MM-DD):")
-check_in_label.pack(anchor="w")
-check_in_entry = ctk.CTkEntry(booking_frame)
-check_in_entry.pack(anchor="w")
-check_in_entry.insert(0, "2025-06-10")
+name_address_frame = ctk.CTkFrame(guest_frame, fg_color="#FFFFFF")
+name_address_frame.pack(fill="x")
 
-check_out_label = ctk.CTkLabel(booking_frame, text="Check out (YYYY-MM-DD):")
-check_out_label.pack(anchor="w")
-check_out_entry = ctk.CTkEntry(booking_frame)
-check_out_entry.pack(anchor="w")
-check_out_entry.insert(0, "2025-06-15")
+name_label = ctk.CTkLabel(name_address_frame,
+                          text="Name:",
+                          font=("Arial", 16))
+name_label.pack(side="left", padx=(20, 5))
+name_entry = ctk.CTkEntry(name_address_frame, width=120)
+name_entry.pack(side="left")
 
-guests_label = ctk.CTkLabel(booking_frame, text="Guests:")
-guests_label.pack(anchor="w")
-guests_entry = ctk.CTkEntry(booking_frame)
-guests_entry.pack(anchor="w")
-guests_entry.insert(0, "3")
+# Create a new frame for address below the name/address frame
+address_frame = ctk.CTkFrame(guest_frame, fg_color="#FFFFFF")
+address_frame.pack(fill="x")
 
-room_type_label = ctk.CTkLabel(booking_frame, text="Room Type:")
-room_type_label.pack(anchor="w")
-room_type_entry = ctk.CTkEntry(booking_frame)
-room_type_entry.pack(anchor="w")
-room_type_entry.insert(0, "Deluxe Suite")
+address_label = ctk.CTkLabel(address_frame,
+                             text="Address:",
+                             font=("Arial", 16))
+address_label.pack(side="left", padx=(20, 5), pady=(10, 0))
+address_entry = ctk.CTkEntry(address_frame, width=230)
+address_entry.pack(side="left", pady=(10, 0))
 
-# Payment Breakdown Table
-payment_label = ctk.CTkLabel(invoice_frame, text="PAYMENT BREAKDOWN", font=("Arial", 11, "bold"))
+contact_label = ctk.CTkLabel(name_address_frame,
+                             text="Contact:",
+                             font=("Arial", 16))
+contact_label.pack(side="left", padx=(20, 5))
+contact_entry = ctk.CTkEntry(name_address_frame,
+                             width=150)
+contact_entry.pack(side="left", padx=(0, 20))
+
+email_label = ctk.CTkLabel(name_address_frame,
+                           text="Email:",
+                           font=("Arial", 16))
+email_label.pack(side="left", padx=(20, 5))
+email_entry = ctk.CTkEntry(name_address_frame, width=180)
+email_entry.pack(side="left", padx=(0, 20))
+
+
+booking_frame = ctk.CTkFrame(invoice_frame,
+                             fg_color="#FFFFFF")
+booking_frame.pack(fill="x", padx=20, pady=(20,10))
+ctk.CTkLabel(booking_frame, text="Booking Information",
+             font=("Arial", 18, "bold")).pack(anchor="w")
+
+check_in_out_frame = ctk.CTkFrame(booking_frame, fg_color="#FFFFFF")
+check_in_out_frame.pack(fill="x")
+
+check_in_label = ctk.CTkLabel(check_in_out_frame,
+                              text="Check in (YYYY-MM-DD):",
+                              font=("Arial", 16))
+check_in_label.pack(side="left",padx=(20, 5))
+check_in_entry = ctk.CTkEntry(check_in_out_frame, width=120)
+check_in_entry.pack(side="left", padx=(20, 20))
+
+check_out_label = ctk.CTkLabel(check_in_out_frame,
+                               text="Check out (YYYY-MM-DD):",
+                               font=("Arial", 16))
+check_out_label.pack(side="left")
+check_out_entry = ctk.CTkEntry(check_in_out_frame, width=120)
+check_out_entry.pack(side="left", padx=5)
+
+guests_roomtype_frame = ctk.CTkFrame(booking_frame, fg_color="#FFFFFF")
+guests_roomtype_frame.pack(fill="x", pady=10)
+
+guests_label = ctk.CTkLabel(guests_roomtype_frame,
+                            text="Guests:", font=("Arial", 16))
+guests_label.pack(side="left", padx=(20, 5))
+guests_entry = ctk.CTkEntry(guests_roomtype_frame, width=80)
+guests_entry.pack(side="left")
+
+room_type_label = ctk.CTkLabel(guests_roomtype_frame,
+                               text="Room Type:",
+                               font=("Arial", 16))
+room_type_label.pack(side="left", padx=(15, 5))
+room_type_entry = ctk.CTkEntry(guests_roomtype_frame, width=120)
+room_type_entry.pack(side="left")
+
+payment_label = ctk.CTkLabel(invoice_frame,
+                             text="Payment Details",
+                             font=("Arial", 18, "bold"),
+                             padx=20, pady=10)
 payment_label.pack(anchor="w", padx=10)
 
-payment_columns = ("Service Description", "Subtotal", "Tax", "Total")
-payment_tree = ttk.Treeview(invoice_frame, columns=payment_columns, show="headings", height=3)
-for col in payment_columns:
-    payment_tree.heading(col, text=col)
-    payment_tree.column(col, width=90)
-payment_tree.pack(fill="x", padx=10)
 
-# Payment entry fields
-payment_entry_frame = ctk.CTkFrame(invoice_frame, fg_color="#FFFFFF")
-payment_entry_frame.pack(fill="x", padx=10, pady=5)
-
-service_label = ctk.CTkLabel(payment_entry_frame, text="Service Description:")
-service_label.pack(anchor="w")
-service_entry = ctk.CTkEntry(payment_entry_frame)
-service_entry.pack(anchor="w")
-service_entry.insert(0, "Room Charge")
-
-subtotal_label = ctk.CTkLabel(payment_entry_frame, text="Subtotal:")
-subtotal_label.pack(anchor="w")
-subtotal_entry = ctk.CTkEntry(payment_entry_frame)
-subtotal_entry.pack(anchor="w")
-subtotal_entry.insert(0, "750.00")
-
-tax_label = ctk.CTkLabel(payment_entry_frame, text="Tax:")
-tax_label.pack(anchor="w")
-tax_entry = ctk.CTkEntry(payment_entry_frame)
-tax_entry.pack(anchor="w")
-tax_entry.insert(0, "75.00")
-
-payment_data = []
-
-def populate_payment_breakdown():
-    for item in payment_tree.get_children():
-        payment_tree.delete(item)
-    for data in payment_data:
-        payment_tree.insert("", "end", values=data)
-
-def add_payment():
-    service = service_entry.get()
-    try:
-        subtotal = float(subtotal_entry.get())
-        tax = float(tax_entry.get())
-    except ValueError:
-        messagebox.showerror("Error", "Subtotal and Tax must be numbers")
-        return
-    total = subtotal + tax
-    payment_data.append((service, subtotal, tax, total))
-    populate_payment_breakdown()
-    service_entry.delete(0, "end")
-    subtotal_entry.delete(0, "end")
-    tax_entry.delete(0, "end")
-    update_totals()
-
-def prefill_payment():
-    service = service_entry.get()
-    subtotal = float(subtotal_entry.get())
-    tax = float(tax_entry.get())
-    total = subtotal + tax
-    payment_data.append((service, subtotal, tax, total))
-    populate_payment_breakdown()
-
-prefill_payment()
-
-add_payment_btn = ctk.CTkButton(payment_entry_frame, text="Add Payment", fg_color="#4A90E2", text_color="white", command=add_payment)
-add_payment_btn.pack(anchor="w", pady=5)
-
-grand_total_label = ctk.CTkLabel(invoice_frame, text="Grand Total: $0.00", font=("Arial", 11, "bold"))
-grand_total_label.pack(anchor="w", padx=10)
-downpayment_label = ctk.CTkLabel(invoice_frame, text="Downpayment: $0.00")
-downpayment_label.pack(anchor="w", padx=10)
-
-def update_totals():
-    grand_total = sum(item[3] for item in payment_data)
-    downpayment = grand_total * 0.3
-    grand_total_label.configure(text=f"Grand Total: ${grand_total:.2f}")
-    downpayment_label.configure(text=f"Downpayment: ${downpayment:.2f}")
-    return grand_total
-
-update_totals()
-
-ctk.CTkLabel(invoice_frame, text="ADDITIONAL INFORMATION", anchor="w").pack(anchor="w", padx=10, pady=5)
-additional_info = ctk.CTkTextbox(invoice_frame, height=60, width=350)
+ctk.CTkLabel(invoice_frame, text="Additional Information", anchor="w", 
+             font=("Arial", 18)).pack(anchor="w", padx=20, pady=(20,10))
+additional_info = ctk.CTkTextbox(invoice_frame, height=60, width=500)
 additional_info.pack(anchor="w", padx=10)
-additional_info.insert("end", "Payment due within 7 days.\nContact us for any queries.\nThank you for your business!")
+additional_info.insert("end", "Payment due within 7 days.Contact us for any queries.Thank you for your business!")
 
-def generate_invoice():
-    name = name_entry.get()
-    room_type = room_type_entry.get()
+# Sample billing data *Not sure, can be deleted - Sofia
+def fill_invoice_fields(data):
+    invoice_no, guest_name, room_type, nights, amount, status = data
+    selected_invoice_number.configure(text=f"INVOICE: {invoice_no}")
+    name_entry.delete(0, "end")
+    name_entry.insert(0, guest_name)
+    address_entry.delete(0, "end")
+    contact_entry.delete(0, "end")
+    room_type_entry.delete(0, "end")
+    room_type_entry.insert(0, room_type)
     try:
-        nights = int((datetime.strptime(check_out_entry.get(), "%Y-%m-%d") - datetime.strptime(check_in_entry.get(), "%Y-%m-%d")).days)
-        if nights <= 0:
-            raise ValueError
-    except ValueError:
-        messagebox.showerror("Error", "Invalid date format or number of nights")
-        return
-    if not name or not room_type:
-        messagebox.showerror("Error", "Name and Room Type are required")
-        return
-    new_invoice_number = f"INV{random.randint(100, 999)}"
-    grand_total = update_totals()
-    new_invoice = (
-        new_invoice_number,
-        name,
-        room_type,
-        nights,
-        grand_total,
-        "Pending"
-    )
-    billing_data.append(new_invoice)
-    populate_billing_history()
-    messagebox.showinfo("Success", f"Invoice {new_invoice_number} generated successfully!")
+        check_in = datetime.today()
+        check_out = check_in.replace(day=check_in.day + int(nights))
+        check_in_entry.insert(0, check_in.strftime("%Y-%m-%d"))
+        check_out_entry.insert(0, check_out.strftime("%Y-%m-%d"))
+    except Exception:
+        check_in_entry.insert(0, "")
+        check_out_entry.insert(0, "")
+    guests_entry.delete(0, "end")
+    guests_entry.insert(0, "1")
+    global payment_data
+    payment_data = []
+    #populate_payment_breakdown()
+   # update_totals()
+    additional_info.delete("1.0", "end")
+    additional_info.insert("end", "Payment due within 7 days.\nContact us for any queries.\nThank you for your business!")
 
-def send_invoice_email():
-    if not billing_data:
-        messagebox.showerror("Error", "No invoice to send")
+def on_tree_select(event):
+    item = tree.focus()
+    if item:
+        values = tree.item(item, "values")
+        if values:
+            for data in billing_data:
+                if str(data[0]) == str(values[0]):
+                    fill_invoice_fields(data)
+                    break
+
+tree.bind("<<TreeviewSelect>>", on_tree_select)
+
+def update_billing():
+    # Get the currently selected item's values from the treeview
+    item = tree.focus()
+    if not item:
+        messagebox.showerror("Error", "No invoice selected to update")
         return
-    messagebox.showinfo("Email", "Invoice email sent to customer!")
+    values = tree.item(item, "values")
+    if not values:
+        messagebox.showerror("Error", "No invoice selected to update")
+        return
+
+    # Pop up window for editing billing info
+    popup = ctk.CTkToplevel(root)
+    popup.title("Update Billing")
+    popup.geometry("400x350")
+
+    ctk.CTkLabel(popup, text="Update Billing Information", font=("Arial", 18, "bold")).pack(pady=10)
+
+    # Payment Status
+    ctk.CTkLabel(popup, text="Status:").pack(anchor="w", padx=20)
+    status_var = ctk.StringVar(value=values[5])
+    status_combo = ctk.CTkComboBox(popup, values=["Pending", "Paid"], variable=status_var)
+    status_combo.pack(fill="x", padx=20, pady=2)
+
+    # Total Amount Paid
+    ctk.CTkLabel(popup, text="Total Amount Paid:").pack(anchor="w", padx=20, pady=(10, 0))
+    total_paid_var = ctk.StringVar(value=str(values[4]) if status_var.get() == "Paid" else "0.00")
+    total_paid_entry = ctk.CTkEntry(popup, textvariable=total_paid_var, state="readonly")
+    total_paid_entry.pack(fill="x", padx=20, pady=2)
+
+    def on_status_change(event=None):
+        if status_var.get() == "Paid":
+            total_paid_var.set(str(values[4]))
+        else:
+            total_paid_var.set("0.00")
+    status_combo.bind("<<ComboboxSelected>>", on_status_change)
+
+    def save_update():
+        item = tree.focus()
+        if not item:
+            messagebox.showerror("Error", "No invoice selected to update")
+            return
+        values = tree.item(item, "values")
+        if not values:
+            messagebox.showerror("Error", "No invoice selected to update")
+            return
+        for idx, data in enumerate(billing_data):
+            if str(data[0]) == str(values[0]):
+                billing_data[idx] = (
+                    data[0],
+                    data[1],
+                    data[2],
+                    data[3],
+                    float(values[4].replace("$", "")),
+                    status_var.get()
+                )
+                break
+        populate_billing_history()
+        popup.destroy()
+        messagebox.showinfo("Success", "Billing updated successfully!")
+
+    ctk.CTkButton(popup, text="Save", command=save_update).pack(pady=15)
+    ctk.CTkButton(popup, text="Cancel", fg_color="#888", command=popup.destroy).pack()
+
+#View Invoice leads to the billing breakdown GUI
 
 button_frame = ctk.CTkFrame(invoice_frame, fg_color="#FFFFFF")
 button_frame.pack(fill="x", padx=10, pady=5)
-ctk.CTkButton(button_frame, text="Generate Invoice", fg_color="#4A90E2", text_color="white", command=generate_invoice).pack(side="right", padx=5)
-ctk.CTkButton(button_frame, text="Invoice Email", fg_color="#AAAAAA", text_color="black", command=send_invoice_email).pack(side="right", padx=5)
+ctk.CTkButton(button_frame, text="View Invoice", fg_color="#4A90E2",
+              text_color="white",
+              font=("Arial", 16, "bold")).pack(side="right", padx=5)
+ctk.CTkButton(button_frame, text="Update Billing", fg_color="#27AE60",
+              text_color="white",
+              font=("Arial", 16, "bold"),
+              command=update_billing).pack(side="right", padx=5)
 
 root.mainloop()
