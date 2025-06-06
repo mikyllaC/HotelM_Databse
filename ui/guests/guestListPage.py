@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 
+
 ctk.set_appearance_mode("light")
 
 class GuestListPage(ctk.CTkFrame):

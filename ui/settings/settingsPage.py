@@ -1,7 +1,8 @@
 # ============== Imports ==============
 import customtkinter as ctk
 from tkinter import messagebox
-from database.db_manager import DBManager
+
+from models.auth import AuthModel
 from utils.session import Session
 from utils.helpers import log
 
@@ -73,8 +74,8 @@ class SettingsPage(ctk.CTkFrame):
             messagebox.showerror("Error", "No user session found.")
             log("[ERROR] Change password failed: No active user session")
 
-        db = DBManager()
-        user_auth_data = db.get_user_credentials(employee_id)
+        auth_model = AuthModel()
+        user_auth_data = auth_model.get_user_credentials(employee_id)
 
         old_pass = self.old_pass_input.get()
         new_pass = self.new_pass_input.get()
@@ -101,7 +102,7 @@ class SettingsPage(ctk.CTkFrame):
             log(f"Change password failed for ({employee_id}): {message}")
             return
 
-        db.update_user_credentials(employee_id, new_pass)
+        auth_model.update_user_credentials(employee_id, new_pass)
         log(f"Password change successful for employee ID: {employee_id}")
         messagebox.showinfo("Success", "Password updated successfully.")
 

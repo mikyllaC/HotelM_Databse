@@ -2,3 +2,12 @@ models/__pycache__/
 ui/__pycache__/
 utils/__pycache__/
 database/__pycache__/
+ui/auth/__pycache__/
+ui/billing/__pycache__/
+ui/dashboard/__pycache__/
+ui/guests/__pycache__/
+ui/home/__pycache__/
+ui/reservations/__pycache__/
+ui/rooms/__pycache__/
+ui/settings/__pycache__/
+ui/staff/__pycache__/

@@ -1,7 +1,7 @@
 # ============== Imports ==============
 import customtkinter as ctk             # customtkinter
-from ui.dashboard import Dashboard      # dashboard screen
-from ui.login_screen import LoginScreen # login screen
+from ui.dashboard.dashboard import Dashboard      # dashboard screen
+from ui.auth.loginScreen import LoginScreen # login screen
 from utils.helpers import clear_screen, log
 
 
