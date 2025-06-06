@@ -9,6 +9,10 @@ import random
 #2. View invoice button leads to the billing breakdown GUI.
 #The UI dapat ng breakdown is ilalagay ko nalang sa billing breakdown GUI.
 #Magiging double kasi if may create din dito, sa create reservation dapat mag ppull ng info
+#--------------------------------------------------------------#
+# Problems encountered:
+# 1. The button to view invoice information is not displaying properly on top of the treeview.
+# 2. The categories in the treeview are not aligning properly to the left.
 
 ctk.set_appearance_mode("light")  # or "dark"
 ctk.set_default_color_theme("blue")
