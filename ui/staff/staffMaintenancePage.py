@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 
 from models.employee import EmployeeModel
+from ui.staff.assignStaff import AssignStaffFrame
 from ui.staff.addStaff import AddStaffFrame
 from ui.staff.editStaff import EditStaffFrame
 
@@ -128,41 +129,14 @@ class StaffMaintenancePage(ctk.CTkFrame):
         self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
         self.tree.pack(fill="both", expand=True, padx=(20, 10), pady=(0, 10))
 
-    # ========== Assign Staff Popup ==========
-    def assign_staff_popup(self):
-        popup = ctk.CTkToplevel(self)
-        popup.title("Assign Staff")
-        popup.geometry("400x250")
-        popup._apply_appearance_mode("light")
-        popup.grab_set()
 
-        ctk.CTkLabel(popup, text="Assign Staff to Room", font=("Arial", 16, "bold")).pack(pady=(20, 10))
-
-        ctk.CTkLabel(popup, text="Staff ID:", font=("Arial", 13)).pack(pady=(5, 0))
-        staff_entry = ctk.CTkEntry(popup, width=220)
-        staff_entry.pack(pady=5)
-
-        ctk.CTkLabel(popup, text="Room/Floor:", font=("Arial", 13)).pack(pady=(10, 0))
-        room_options = [f"Floor {i}" for i in range(1, 13)]
-        room_var = ctk.StringVar(value=room_options[0])
-
-        try:
-            room_dropdown = ctk.CTkComboBox(popup, variable=room_var, values=room_options,
-                                            width=220, height=32, font=("Courier", 13))
-        except AttributeError:
-            room_dropdown = ttk.Combobox(popup, textvariable=room_var, values=room_options,
-                                         state="readonly", width=25)
-        room_dropdown.pack(pady=5)
-
-        def on_assign():
-            staff_id = staff_entry.get()
-            room = room_var.get()
-            # TODO: Add logic to assign staff here
-            print(f"[LOG] Assigned staff {staff_id} to {room}")
-            popup.destroy()
-
-        ctk.CTkButton(popup, text="Assign", command=on_assign).pack(pady=(15, 5))
-        ctk.CTkButton(popup, text="Cancel", command=popup.destroy, fg_color="gray").pack()
+    def on_tree_select(self, event):
+        # Clear all tags first
+        for item in self.tree.get_children():
+            self.tree.item(item, tags=())
+        # Highlight selected
+        for item in self.tree.selection():
+            self.tree.item(item, tags=("highlighted",))
 
 
     def populate_staff_list(self):
@@ -186,25 +160,42 @@ class StaffMaintenancePage(ctk.CTkFrame):
             messagebox.showerror("Database Error", f"Failed to load employee data.\n{str(e)}")
 
 
+    # ========== Assign Staff Popup ==========
+    def assign_staff_popup(self):
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showwarning("No selection", "Please select a staff member to assign.")
+            return
+
+        selected_item = self.tree.item(selected[0])
+        staff_id = selected_item["values"][1]  # Assuming Staff ID is the 2nd column
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Assign Staff")
+        popup.geometry("400x350")
+        popup.grab_set()
+
+        frame = AssignStaffFrame(parent_popup=popup, employee_id=staff_id, parent_page=self)
+        frame.pack(fill="both", expand=True)
+
+
     def add_staff_popup(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Staff")
         popup.geometry("800x800")
-        frame = AddStaffFrame(parent=popup)
-        frame.pack(fill="both", expand=True)
         popup.grab_set() # used to capture all events (like mouse and keyboard input) to the popup window
         # When you call .grab_set() on a widget (usually a Toplevel), it:
         # Prevents the user from interacting with any other windows in the application
         # until that widget/window is closed or .grab_release() is called.
 
+        frame = AddStaffFrame(parent_popup=popup, parent_page=self)
+        frame.pack(fill="both", expand=True)
+
 
     def edit_staff_popup(self):
-        popup = ctk.CTkToplevel(self)
-        popup.title("Edit Staff Details")
-        popup.geometry("600x900")
-        popup.grab_set()
-
         selected = self.tree.selection()
+
         if not selected:
             messagebox.showwarning("No selection", "Please select a staff member to update.")
             return
@@ -212,18 +203,13 @@ class StaffMaintenancePage(ctk.CTkFrame):
         selected_item = self.tree.item(selected[0])
         staff_id = selected_item["values"][1]  # Assuming Staff ID is the 2nd column
 
+        popup = ctk.CTkToplevel(self)
+        popup.title("Edit Staff Details")
+        popup.geometry("600x900")
+        popup.grab_set()
+
         frame = EditStaffFrame(parent_popup=popup, employee_id=staff_id, parent_page=self)
         frame.pack(fill="both", expand=True)
-
-
-
-    def on_tree_select(self, event):
-        # Clear all tags first
-        for item in self.tree.get_children():
-            self.tree.item(item, tags=())
-        # Highlight selected
-        for item in self.tree.selection():
-            self.tree.item(item, tags=("highlighted",))
 
 
 # ========== Preview Frame as App ==========

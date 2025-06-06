@@ -6,9 +6,10 @@ from models.employee import EmployeeModel
 
 
 class AddStaffFrame(ctk.CTkFrame):
-    def __init__(self, parent):
-        super().__init__(parent)
+    def __init__(self, parent_popup, parent_page=None):
+        super().__init__(parent_popup)
         self.configure(fg_color="white")    # Set background color of the frame
+        self.parent_page = parent_page
         self.employee_model = EmployeeModel()
         self.create_widgets()
 
@@ -168,19 +169,6 @@ class AddStaffFrame(ctk.CTkFrame):
         }
 
         self.employee_model.add_employee(employee_data=staff_data)
-
+        if self.parent_page:
+            self.parent_page.populate_staff_list()  # refreshes tree after update
         self.master.destroy()
-
-
-if __name__ == "__main__":
-    root = ctk.CTk()
-    root.title("Add Staff")
-    root.geometry("1600x900")
-
-    ctk.set_appearance_mode("light")    # set overall appearance mode: light/dark/system
-    ctk.set_default_color_theme("blue") # set default color theme
-
-    frame = AddStaffFrame(parent=root)
-    frame.pack(fill="both", expand=True)
-
-    root.mainloop()
