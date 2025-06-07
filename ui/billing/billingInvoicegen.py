@@ -114,7 +114,7 @@ class BillingInvoicePage(ctk.CTkFrame):
             anchor="w"
         )
         room_number_label.pack(anchor="w", padx=10, pady=2)
-
+        #Check in 
         checkin_label = ctk.CTkLabel(
             booking_info_right,
             text="Check-in Date:",
@@ -122,7 +122,7 @@ class BillingInvoicePage(ctk.CTkFrame):
             anchor="w"
         )
         checkin_label.pack(anchor="w", padx=10, pady=2)
-
+        #Check out
         checkout_label = ctk.CTkLabel(
             booking_info_right,
             text="Check-out Date:",
@@ -257,7 +257,7 @@ class BillingInvoicePage(ctk.CTkFrame):
         )
         print_button.pack(side="right", padx=(20, 10))
 
-
+        #Pop up message if download button is clicked
         def download_invoice():
             messagebox.showinfo("Download Invoice", "Invoice has been downloaded successfully.")
 
