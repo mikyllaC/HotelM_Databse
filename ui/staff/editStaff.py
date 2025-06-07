@@ -43,7 +43,6 @@ class EditStaffFrame(ctk.CTkFrame):
             ("Role", "POSITION", "dropdown", ["CEO", "Manager", "Cleaner", "Receptionist", "Chef", "Security"]),
             ("Hire Date (YYYY-MM-DD)", "HIRE_DATE", "entry"),
             ("Salary", "SALARY", "entry"),
-            ("Assigned To", "ASSIGNED_TO", "dropdown", ['Floor 1','Floor 2','Floor 3','Floor 4','Floor 5','Floor 6',]),
             ("Status", "STATUS", "dropdown", ["Available", "Terminated", "On Leave", "Suspended", "Retired"]),
         ]
 

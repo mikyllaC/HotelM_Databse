@@ -1,4 +1,5 @@
 import datetime
+import sqlite3
 
 from models.auth import AuthModel
 from utils.helpers import log, get_connection
@@ -45,7 +46,7 @@ class EmployeeModel():
                     HIRE_DATE DATE,
                     SALARY REAL,
                     ASSIGNED_TO TEXT,
-                    STATUS TEXT NOT NULL DEFAULT 'active'
+                    STATUS TEXT NOT NULL DEFAULT 'Available'
                 )""")
             conn.commit()
 
@@ -138,16 +139,40 @@ class EmployeeModel():
 
 
     def update_employee_details(self, employee_id, updated_data: dict):
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            set_clause = ", ".join(f"{key} = ?" for key in updated_data)
-            values = list(updated_data.values()) + [employee_id]
-            cursor.execute(f"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                set_clause = ", ".join(f"{key} = ?" for key in updated_data)
+                values = list(updated_data.values()) + [employee_id]
+                cursor.execute(f"""
+                    UPDATE EMPLOYEE
+                    SET {set_clause}
+                    WHERE EMPLOYEE_ID = ?
+                """, values)
+                conn.commit()
+
+        except sqlite3.Error as e:
+            log(f"[DB-ERROR] Failed to update employee details: {e}")
+            return
+
+
+    def assign_staff(self, employee_id, assigned_to):
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
                 UPDATE EMPLOYEE
-                SET {set_clause}
+                SET ASSIGNED_TO = ?
                 WHERE EMPLOYEE_ID = ?
-            """, values)
-            conn.commit()
+                """, (assigned_to, employee_id))
+                conn.commit()
+
+                rows_updated = cursor.rowcount
+                return rows_updated == 1 # Return True if exactly one row was updated
+
+        except sqlite3.Error as e:
+            log(f"[DB-ERROR] Failed to assign staff: {e}")
+            return False
 
 
 

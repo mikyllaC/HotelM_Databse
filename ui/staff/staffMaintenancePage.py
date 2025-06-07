@@ -3,6 +3,7 @@ from tkinter import ttk, messagebox
 import customtkinter as ctk
 
 from models.employee import EmployeeModel
+from ui.staff.assignStaff import AssignStaffFrame
 from ui.staff.addStaff import AddStaffFrame
 from ui.staff.editStaff import EditStaffFrame
 
@@ -13,156 +14,152 @@ class StaffMaintenancePage(ctk.CTkFrame):
         super().__init__(parent)
         self.employee_model = EmployeeModel()
         self.create_widgets()
+        self.update_summary_metrics()
 
-    # ============== Widget Creation ==============
+
+# ============== Widget Creation ==============
     def create_widgets(self):
-        self.configure(fg_color="#f0f0f0")
+        self.configure(fg_color="white")
 
         # ========== Title ==========
         label = ctk.CTkLabel(self,
                              text="Staff and Maintenance",
                              font=("Arial", 24, "bold"),
                              text_color="black")
-        label.pack(pady=20)
+        label.pack(pady=(40, 30))
 
         # ========== Summary Frame ==========
-        frame = ctk.CTkFrame(self, fg_color="#c5c4c4", height=120)
-        frame.pack(pady=(10, 0), padx=20, fill="x")
+        frame = ctk.CTkFrame(
+            self,
+            fg_color="#f7f7f7",
+            corner_radius=12,
+            border_width=1,
+            border_color="#e5e7eb",
+            height=140
+        )
+        frame.pack(pady=(10, 20), padx=20, fill="x")
         frame.pack_propagate(False)
 
         ctk.CTkLabel(frame,
                      text="Summary",
-                     font=("Arial", 20, "bold"),
-                     text_color="black").pack(pady=20, anchor="w", padx=20)
+                     font=("Arial", 22, "bold"),
+                     text_color="#374151").pack(pady=(20,15), anchor="w", padx=20)
 
-        # ========== Summary Metrics ==========
-        horizontal_frame = ctk.CTkFrame(frame, fg_color="#c5c4c4")
+
+    # ========== Summary Metrics ==========
+        horizontal_frame = ctk.CTkFrame(frame, fg_color="#f7f7f7")
         horizontal_frame.pack(pady=10, padx=20, fill="x")
 
-        # Sample summary values (replace with dynamic data later)
-        rooms_cleaned = 15
-        rooms_dirty = 7
-        staffs_available = 5
-
         # Rooms cleaned
-        ctk.CTkLabel(horizontal_frame, text=str(rooms_cleaned),
-                     font=("Arial", 18, "bold"), text_color="black").pack(side="left", padx=(0, 5))
-        ctk.CTkLabel(horizontal_frame, text="rooms cleaned",
-                     font=("Arial", 18, "italic"), text_color="black").pack(side="left", padx=(0, 100))
+        self.cleaned_label = ctk.CTkLabel(horizontal_frame,
+                                          text="0",
+                                          font=("Arial", 20, "bold"),
+                                          text_color="black")
+        self.cleaned_label.grid(row=0, column=0, sticky="w", padx=(10, 0))
+
+        cleaned_desc = ctk.CTkLabel(horizontal_frame,
+                                    text="rooms cleaned",
+                                    font=("Arial", 18, "italic"),
+                                    text_color="#6b7280")
+        cleaned_desc.grid(row=0, column=1, sticky="w", padx=(10, 100))
 
         # Rooms dirty
-        ctk.CTkLabel(horizontal_frame, text=str(rooms_dirty),
-                     font=("Arial", 18, "bold"), text_color="black").pack(side="left", padx=(10, 1))
-        ctk.CTkLabel(horizontal_frame, text="rooms are dirty",
-                     font=("Arial", 18, "italic"), text_color="black").pack(side="left", padx=(5, 100))
+        self.dirty_label = ctk.CTkLabel(horizontal_frame,
+                                        text="0",
+                                        font=("Arial", 20, "bold"),
+                                        text_color="black")
+        self.dirty_label.grid(row=0, column=2, sticky="w", padx=(10, 0))
+
+        dirty_desc = ctk.CTkLabel(horizontal_frame,
+                                  text="rooms are dirty",
+                                  font=("Arial", 18, "italic"),
+                                  text_color="#6b7280")
+        dirty_desc.grid(row=0, column=3, sticky="w", padx=(10, 100))
 
         # Staff available
-        ctk.CTkLabel(horizontal_frame, text=str(staffs_available),
-                     font=("Arial", 18, "bold"), text_color="black").pack(side="left", padx=(100, 1))
-        ctk.CTkLabel(horizontal_frame, text="staffs available",
-                     font=("Arial", 18, "italic"), text_color="black").pack(side="left", padx=(5, 20))
+        self.available_label = ctk.CTkLabel(horizontal_frame,
+                                            text="0",
+                                            font=("Arial", 20, "bold"),
+                                            text_color="black")
+        self.available_label.grid(row=0, column=4, sticky="w", padx=(10, 0))
 
-        # ========== Buttons ==========
+        available_desc = ctk.CTkLabel(horizontal_frame,
+                                      text="staffs available",
+                                      font=("Arial", 18, "italic"),
+                                      text_color="#6b7280")
+        available_desc.grid(row=0, column=5, sticky="w", padx=(10, 10))
+
+
+    # ========== Buttons ==========
         button_frame = ctk.CTkFrame(self, fg_color="transparent", height=70)
         button_frame.pack(pady=(10, 0), padx=(20, 10), fill="x")
         button_frame.pack_propagate(False)
 
+        button_kwargs = dict(font=("Arial", 15, "bold"), width=200, height=40, text_color="white",
+                             fg_color="#2563eb", hover_color="#1d4ed8")
+
         # Assign Staff Button
         assign_btn = ctk.CTkButton(button_frame,
                                    text="Assign Staff",
-                                   font=("Arial", 15, "bold"),
-                                   text_color="white",
-                                   width=200,
-                                   height=40,
-                                   command=self.assign_staff_popup)
+                                   command=self.assign_staff_popup,
+                                   **button_kwargs)
         assign_btn.pack(side="right", padx=(20, 10), pady=10)
 
         # Add Staff Button
         add_btn = ctk.CTkButton(button_frame,
                                 text="Add Staff",
-                                font=("Arial", 15, "bold"),
-                                text_color="white",
-                                width=200,
-                                height=40,
-                                command=self.add_staff_popup)
+                                command=self.add_staff_popup,
+                                **button_kwargs)
         add_btn.pack(side="right", padx=(20, 10), pady=10)
 
         # Remove Staff Button
         update_btn = ctk.CTkButton(button_frame,
                                    text="Edit Staff",
-                                   font=("Arial", 15, "bold"),
-                                   text_color="white",
-                                   width=200,
-                                   height=40,
-                                   command=self.edit_staff_popup)
+                                   command=self.edit_staff_popup,
+                                   **button_kwargs)
         update_btn.pack(side="right", padx=(20, 10), pady=10)
 
-        # ========== Staff Table ==========
+
+    # ========== Staff Table ==========
         table_frame = ctk.CTkFrame(self, fg_color="transparent")
         table_frame.pack(pady=(10, 10), padx=(0, 10), fill="both", expand=True)
 
         columns = ("Staff Name", "Staff ID", "Role", "Assigned to", "Status")
 
         style = ttk.Style()
-        style.configure("Treeview.Heading", font=("Arial", 11, "bold"))
-        style.configure("Treeview", font=("Courier", 11))
+        style.configure("Treeview.Heading", font=("Arial", 11, "bold"), foreground="#374151")
+        style.configure("Treeview", font=("Courier", 11),rowheight=25)
+        style.map("Treeview", background=[("selected", "#bfdbfe")], foreground=[("selected", "#1a1a1a")])
 
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=20)
+
         for col in columns:
             self.tree.heading(col, text=col, anchor="w")
             self.tree.column(col, anchor="w", width=150)
 
-        # # Sample static data
-        # sample_data = [
-        #     ("Sunday Dimagiba", "000-000-00", "Cleaning", "Floor 12", "Available"),
-        #     ("John Doe", "111-111-11", "Maintenance", "Floor 5", "Busy"),
-        #     ("Jane Smith", "222-222-22", "Cleaning", "Floor 3", "Available"),
-        #     ("Alice Johnson", "333-333-33", "Maintenance", "Floor 8", "Available"),
-        #     ("Bob Brown", "444-444-44", "Cleaning", "Floor 10", "Busy"),
-        # ]
-        # for row in sample_data:
-        #     self.tree.insert("", "end", values=row)
-        self.populate_staff_list()
+        self.tree.tag_configure("even_row", background="#f7f7f7")
+        self.tree.tag_configure("odd_row", background="#ffffff")
 
-        self.tree.tag_configure("highlighted", background="#b3e6ff")
-        self.tree.bind("<<TreeviewSelect>>", self.on_tree_select)
         self.tree.pack(fill="both", expand=True, padx=(20, 10), pady=(0, 10))
 
-    # ========== Assign Staff Popup ==========
-    def assign_staff_popup(self):
-        popup = ctk.CTkToplevel(self)
-        popup.title("Assign Staff")
-        popup.geometry("400x250")
-        popup._apply_appearance_mode("light")
-        popup.grab_set()
+        self.populate_staff_list()
 
-        ctk.CTkLabel(popup, text="Assign Staff to Room", font=("Arial", 16, "bold")).pack(pady=(20, 10))
 
-        ctk.CTkLabel(popup, text="Staff ID:", font=("Arial", 13)).pack(pady=(5, 0))
-        staff_entry = ctk.CTkEntry(popup, width=220)
-        staff_entry.pack(pady=5)
+# ========== Events ==========
 
-        ctk.CTkLabel(popup, text="Room/Floor:", font=("Arial", 13)).pack(pady=(10, 0))
-        room_options = [f"Floor {i}" for i in range(1, 13)]
-        room_var = ctk.StringVar(value=room_options[0])
+    def update_summary_metrics(self):
+        employee_list = self.employee_model.get_all_employees()
+        rooms_cleaned = 0
+        rooms_dirty = 0
+        available_staff = 0
 
-        try:
-            room_dropdown = ctk.CTkComboBox(popup, variable=room_var, values=room_options,
-                                            width=220, height=32, font=("Courier", 13))
-        except AttributeError:
-            room_dropdown = ttk.Combobox(popup, textvariable=room_var, values=room_options,
-                                         state="readonly", width=25)
-        room_dropdown.pack(pady=5)
+        for employee in employee_list:
+            if employee['STATUS'] == 'Available':
+                available_staff += 1
 
-        def on_assign():
-            staff_id = staff_entry.get()
-            room = room_var.get()
-            # TODO: Add logic to assign staff here
-            print(f"[LOG] Assigned staff {staff_id} to {room}")
-            popup.destroy()
-
-        ctk.CTkButton(popup, text="Assign", command=on_assign).pack(pady=(15, 5))
-        ctk.CTkButton(popup, text="Cancel", command=popup.destroy, fg_color="gray").pack()
+        self.cleaned_label.configure(text=str(rooms_cleaned))
+        self.dirty_label.configure(text=str(rooms_dirty))
+        self.available_label.configure(text=str(available_staff))
 
 
     def populate_staff_list(self):
@@ -172,39 +169,60 @@ class StaffMaintenancePage(ctk.CTkFrame):
 
         try:
             employee_data = self.employee_model.get_all_employees()
-            for employee in employee_data:
-                # Convert sqlite3.Row to tuple so it shows correctly in the Treeview
+            for index, employee in enumerate(employee_data):
                 full_name = f"{employee['FIRST_NAME']} {employee['LAST_NAME']}"
-                self.tree.insert("", "end", values=(
-                    full_name,
-                    employee["EMPLOYEE_ID"],
-                    employee["POSITION"],
-                    employee["ASSIGNED_TO"],
-                    employee["STATUS"]
-                ))
+                tag = "even_row" if index % 2 == 0 else "odd_row"
+
+                self.tree.insert("", "end",
+                                 values=(
+                                     full_name,
+                                     employee["EMPLOYEE_ID"],
+                                     employee["POSITION"],
+                                     employee["ASSIGNED_TO"],
+                                     employee["STATUS"]
+                                 ),
+                                 tags=(tag,))
+
+            self.update_summary_metrics()
+
         except Exception as e:
             messagebox.showerror("Database Error", f"Failed to load employee data.\n{str(e)}")
+
+
+# ========== Staff Popups ==========
+
+    def assign_staff_popup(self):
+        selected = self.tree.selection()
+
+        if not selected:
+            messagebox.showwarning("No selection", "Please select a staff member to assign.")
+            return
+
+        selected_item = self.tree.item(selected[0])
+        staff_id = selected_item["values"][1]  # Assuming Staff ID is the 2nd column
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Assign Staff")
+        popup.geometry("400x350")
+        popup.grab_set()
+
+        frame = AssignStaffFrame(parent_popup=popup, employee_id=staff_id, parent_page=self)
+        frame.pack(fill="both", expand=True)
 
 
     def add_staff_popup(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Add New Staff")
         popup.geometry("800x800")
-        frame = AddStaffFrame(parent=popup)
+        popup.grab_set() # Lock focus to popup
+
+        frame = AddStaffFrame(parent_popup=popup, parent_page=self)
         frame.pack(fill="both", expand=True)
-        popup.grab_set() # used to capture all events (like mouse and keyboard input) to the popup window
-        # When you call .grab_set() on a widget (usually a Toplevel), it:
-        # Prevents the user from interacting with any other windows in the application
-        # until that widget/window is closed or .grab_release() is called.
 
 
     def edit_staff_popup(self):
-        popup = ctk.CTkToplevel(self)
-        popup.title("Edit Staff Details")
-        popup.geometry("600x900")
-        popup.grab_set()
-
         selected = self.tree.selection()
+
         if not selected:
             messagebox.showwarning("No selection", "Please select a staff member to update.")
             return
@@ -212,24 +230,20 @@ class StaffMaintenancePage(ctk.CTkFrame):
         selected_item = self.tree.item(selected[0])
         staff_id = selected_item["values"][1]  # Assuming Staff ID is the 2nd column
 
+        popup = ctk.CTkToplevel(self)
+        popup.title("Edit Staff Details")
+        popup.geometry("600x900")
+        popup.grab_set()
+
         frame = EditStaffFrame(parent_popup=popup, employee_id=staff_id, parent_page=self)
         frame.pack(fill="both", expand=True)
 
 
 
-    def on_tree_select(self, event):
-        # Clear all tags first
-        for item in self.tree.get_children():
-            self.tree.item(item, tags=())
-        # Highlight selected
-        for item in self.tree.selection():
-            self.tree.item(item, tags=("highlighted",))
-
-
 # ========== Preview Frame as App ==========
 if __name__ == "__main__":
     root = ctk.CTk()
-    root.geometry("900x700")
+    root.geometry("1400x900")
     root.title("Staff Maintenance Test")
 
     ctk.set_appearance_mode("light")    # set overall appearance mode: light/dark/system
