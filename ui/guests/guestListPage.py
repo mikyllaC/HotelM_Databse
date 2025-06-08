@@ -8,7 +8,7 @@ ctk.set_appearance_mode("light")
 class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.configure(fg_color="#F5F5F5")
+        self.configure(fg_color="#f0f0f0")
 
         # Placeholder Data
         self.guest_data = [
