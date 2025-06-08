@@ -5,6 +5,8 @@ from tkinter import ttk
 #Notes ni Sofia sa GUI 
 #1. Added create guest beside create reservation
 #2. Fixed geometry of window to 1600x800
+#3. added Guest ID in table 
+#4. Removed Rooms in category
 
 ctk.set_appearance_mode("light")
 
@@ -17,8 +19,8 @@ class GuestListPage(ctk.CTkFrame):
 
         # Placeholder Data
         self.guest_data = [
-            ["Guest Name", "Contact Information", "Number of Rooms", "Status"],
-            ["Sunday", "0916-123-1234", "3", "Checked In"],
+            ["Guest Name", "Guest ID" ,"Contact Information", "Status"],
+            ["Sunday", "000-00", "0916-123-1234", "Checked In"],
             ["-", "-", "-", "-"],
             ["-", "-", "-", "-"],
             ["-", "-", "-", "-"],
@@ -94,12 +96,9 @@ class GuestListPage(ctk.CTkFrame):
         labels = self.guest_data[0]
         extra_info = {
             "Email": "sunday@example.com",
-            "Pax": "5",
             "Address": "123 Main St, City",
             "Check-in Date": "2023-10-01",
-            "Special Requests": "Late check-in, Vegan meals",
-            "Room Type": "Deluxe Suite",
-            "Payment Status": "Paid",
+            "Check-out Date": "2023-10-05",
         }
 
         wraplength = 200
