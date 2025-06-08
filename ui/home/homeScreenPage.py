@@ -5,13 +5,14 @@ import customtkinter as ctk  # customtkinter for modern UI
 # ============== Home Screen ==============
 class HomeScreenPage(ctk.CTkFrame):
     def __init__(self, parent):
-        super().__init__(parent, fg_color="#f0f0f0")
+        super().__init__(parent)
+        self.configure(fg_color="#F5F5F5")
         self.create_widgets()  # initialize UI components
 
         # ============== UI Setup ==============
     def create_widgets(self):
         # ---- Main Content Frame ----
-        self.content_frame = ctk.CTkFrame(self, width=1000, height=720, fg_color="#e6e6e6")
+        self.content_frame = ctk.CTkFrame(self, width=1000, height=720, fg_color="#F5F5F5")
         self.content_frame.place(relwidth=1, relheight=1)
 
         # ---- Title ----

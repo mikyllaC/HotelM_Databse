@@ -17,7 +17,7 @@ class SettingsPage(ctk.CTkFrame):
 
     # ============== Widget Creation ==============
     def create_widget(self):
-        self.configure(fg_color="#f0f0f0")
+        self.configure(fg_color="#F5F5F5")
         # ---- Outer Container ----
         self.label_frame = ctk.CTkFrame(self)
         self.label_frame.configure(fg_color="transparent")
