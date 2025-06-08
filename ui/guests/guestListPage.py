@@ -2,6 +2,9 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 
+#Notes ni Sofia sa GUI 
+#1. Added create guest beside create reservation
+#2. Fixed geometry of window to 1600x800
 
 ctk.set_appearance_mode("light")
 
@@ -9,6 +12,8 @@ class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.configure(fg_color="#f0f0f0")
+        self.master.geometry("1600x800")
+
 
         # Placeholder Data
         self.guest_data = [
@@ -37,7 +42,7 @@ class GuestListPage(ctk.CTkFrame):
         title_label.pack(side="top", anchor="n", pady=(35, 45), padx=(10, 0))
 
     def build_right_frame(self):
-        self.right_frame = ctk.CTkFrame(self, width=250, height=738, corner_radius=10, border_width=1)
+        self.right_frame = ctk.CTkFrame(self, width=300, height=738, corner_radius=10, border_width=1)
         self.right_frame.pack_propagate(False)
         self.right_frame.pack_forget()
 
@@ -51,6 +56,7 @@ class GuestListPage(ctk.CTkFrame):
             width=20,
             height=20,
             corner_radius=10
+            , fg_color="#e57373", hover_color="#c62828"
         )
         close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-5, y=5)
 
@@ -73,6 +79,7 @@ class GuestListPage(ctk.CTkFrame):
         )
         self.edit_guest_button.pack(side="bottom", padx=20, pady=(0, 10))
 
+    #Close right frame function
     def close_right_frame(self):
         self.right_frame.pack_forget()
 
@@ -83,7 +90,7 @@ class GuestListPage(ctk.CTkFrame):
             if isinstance(widget, ctk.CTkButton):
                 continue
             widget.destroy()
-
+        # Display guest information (placeholder data)
         labels = self.guest_data[0]
         extra_info = {
             "Email": "sunday@example.com",
@@ -109,7 +116,7 @@ class GuestListPage(ctk.CTkFrame):
 
     def build_search_filter_bar(self):
         self.search_filter_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0))
+        self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0), expand=True, fill="x")
 
         # Create Reservation Button
         create_reservation_button = ctk.CTkButton(
@@ -121,6 +128,17 @@ class GuestListPage(ctk.CTkFrame):
         )
         create_reservation_button.pack(side="left", padx=(0, 10))
 
+        # Create Guest Button
+        create_guest_button = ctk.CTkButton(
+            self.search_filter_frame,
+            text="Create Guest",
+            font=("Arial", 16, "bold"),
+            width=150,
+            height=36,
+            command=self.create_guest_popup
+        )
+        create_guest_button.pack(side="left", padx=(0, 10))
+        
         # Search Entry
         self.search_var = tk.StringVar()
         self.search_entry = ctk.CTkEntry(
@@ -171,6 +189,7 @@ class GuestListPage(ctk.CTkFrame):
                (selected_status == "All Status" or status == selected_status):
                 self.treeview.insert("", "end", values=row)
 
+    #Function to update payment status window pop up
     def update_payment_popup(self):
         payment_window = ctk.CTkToplevel(self)
         payment_window.title("Update Payment")
@@ -193,8 +212,9 @@ class GuestListPage(ctk.CTkFrame):
 
         ctk.CTkButton(payment_window, text="Update", command=save_payment, width=120).pack(pady=20)
 
+    #Function for guest information window pop up
     def build_left_table(self):
-        self.left_frame = ctk.CTkFrame(self, width=750, height=738, corner_radius=10,
+        self.left_frame = ctk.CTkFrame(self, width=1250, height=738, corner_radius=10,
                                        border_width=0, fg_color="transparent")
         self.left_frame.pack_propagate(False)
         self.left_frame.pack(side="left", padx=(10, 1), pady=(15, 10), fill="y", anchor="n")
@@ -219,6 +239,7 @@ class GuestListPage(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y")
         self.treeview.configure(yscrollcommand=scrollbar.set)
 
+    #Function to handle row selection in the table
     def on_row_select(self, event):
         selected_item = self.treeview.selection()
         if selected_item:
@@ -231,11 +252,68 @@ class GuestListPage(ctk.CTkFrame):
         else:
             self.right_frame.pack_forget()
 
+        #Create Guest function
+    def create_guest_popup(self):
+        popup = ctk.CTkToplevel(self)
+        popup.title("Create Guest")
+        popup.geometry("450x600")
+
+        ctk.CTkLabel(popup, text="Create New Guest", font=("Arial", 20, "bold")).pack(pady=(20, 10))
+
+        name_var = tk.StringVar()
+        contact_var = tk.StringVar()
+        rooms_var = tk.StringVar()
+        status_var = tk.StringVar(value="Checked In")
+
+        ctk.CTkLabel(popup, text="First Name:", font=("Arial", 14)).pack(pady=(10, 0))
+        first_name_var = tk.StringVar()
+        first_name_entry = ctk.CTkEntry(popup, textvariable=first_name_var, width=250)
+        first_name_entry.pack()
+
+        ctk.CTkLabel(popup, text="Last Name:", font=("Arial", 14)).pack(pady=(10, 0))
+        last_name_var = tk.StringVar()
+        last_name_entry = ctk.CTkEntry(popup, textvariable=last_name_var, width=250)
+        last_name_entry.pack()
+
+        ctk.CTkLabel(popup, text="Contact Information:", font=("Arial", 14)).pack(pady=(10, 0))
+        contact_entry = ctk.CTkEntry(popup, textvariable=contact_var, width=250)
+        contact_entry.pack()
+
+        ctk.CTkLabel(popup, text="Email:", font=("Arial", 14)).pack(pady=(10, 0))
+        email_var = tk.StringVar()
+        email_entry = ctk.CTkEntry(popup, textvariable=email_var, width=250)
+        email_entry.pack()
+
+        def on_create():
+            popup.destroy()
+
+        # Button Frame for Create and Close buttons
+        button_frame = ctk.CTkFrame(popup, fg_color="transparent")
+        button_frame.pack(pady=10)
+
+        ctk.CTkButton(
+            button_frame,
+            text="Create Guest",
+            font=("Arial", 16, "bold"),
+            width=150,
+            height=36,
+        ).pack(side="left", padx=20, pady=10)
+
+        ctk.CTkButton(
+            button_frame,
+            text="Close",
+            font=("Arial", 16, "bold"),
+            fg_color="#e57373",
+            command=on_create,
+            width=150,
+            height=36
+        ).pack(side="left", padx=10, pady=10)
+
+
 
 if __name__ == "__main__":
     root = ctk.CTk()
     root.title("Guest List Page")
-    root.geometry("1000x600")
     app = GuestListPage(root)
     app.pack(fill="both", expand=True)
     root.mainloop()
