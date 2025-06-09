@@ -1,16 +1,12 @@
 import customtkinter as ctk
-import tkinter as tk
-from tkinter import ttk
-
-ctk.set_appearance_mode("light")
 
 
 class CreateReservation(ctk.CTkFrame):
-    def __init__(self, parent):
+    def __init__(self, parent, guest_info=None):
         super().__init__(parent)
         self.master.title("Create Reservation")
         self.master.geometry("1600x800")
-        self.configure(fg_color="#e0e0e0")
+        self.configure(fg_color="white")
 
         #List
         self.label = ctk.CTkLabel(self, 
@@ -56,6 +52,16 @@ class CreateReservation(ctk.CTkFrame):
                      pady=(5,20),
                      sticky="w",
                      columnspan=1)
+
+        # Pre-fill Guest ID if guest_info is provided
+        if guest_info is not None and len(guest_info) > 0:
+            self.guest_id_entry.insert(0, guest_info[0]) # Assuming guest_info[0] is the Guest ID
+            self.name_label.configure(text=f"Guest Name: {guest_info[0]}")  # Example of using guest name
+        else:
+            # Optionally, you can set default values or leave fields empty
+            self.guest_id_entry.configure(state="normal")  # Ensure the entry is editable
+            self.guest_id_entry.delete(0, "end")  # Clear any previous input if needed
+
 
         self.search_button = ctk.CTkButton(self.list_frame,
                            text="Search",
@@ -265,7 +271,7 @@ class CreateReservation(ctk.CTkFrame):
             sticky="w"
         ) #Put logic here that it adds another room to the reservation *Mapupunta sa other side*
 
-    #Billing method
+        #Billing method
         self.name_label = ctk.CTkLabel(self.list_frame, 
                                        text="Billing Method",
                                        font=("Arial", 20, "bold"))
@@ -381,6 +387,7 @@ class CreateReservation(ctk.CTkFrame):
 #temp display
 if __name__ == "__main__":
     root = ctk.CTk()
+    ctk.set_appearance_mode("light")
     app = CreateReservation(root)
     app.pack(fill="both",
              expand=True)

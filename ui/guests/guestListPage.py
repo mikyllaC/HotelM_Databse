@@ -2,6 +2,8 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 
+from ui.reservations.createReservation import CreateReservation
+
 # Notes ni Sofia sa GUI
 # 1. Added create guest beside create reservation
 # 2. Fixed geometry of window to 1600x800
@@ -13,12 +15,11 @@ class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.configure(fg_color="#f0f0f0")
-        self.master.geometry("1600x800")
 
         # Placeholder Data
         self.guest_data = [
             ["Guest Name", "Contact Information", "Number of Rooms", "Status"],
-            ["Sunday", "0916-123-1234", "3", "Checked In"],
+            ["James", "0916-123-1234", "3", "Checked In"],
             ["-", "-", "-", "-"],
             ["-", "-", "-", "-"],
             ["-", "-", "-", "-"],
@@ -31,15 +32,18 @@ class GuestListPage(ctk.CTkFrame):
 
         self.build_ui()
 
+
     def build_ui(self):
         self.build_title_label()
         self.build_right_frame()
         self.build_search_filter_bar()
         self.build_left_table()
 
+
     def build_title_label(self):
         title_label = ctk.CTkLabel(self, text="Guest Management", font=("Arial", 28, "bold"))
         title_label.pack(side="top", anchor="n", pady=(35, 45), padx=(10, 0))
+
 
     def build_right_frame(self):
         self.right_frame = ctk.CTkFrame(self, width=300, height=738, corner_radius=10, border_width=1)
@@ -79,9 +83,11 @@ class GuestListPage(ctk.CTkFrame):
         )
         self.edit_guest_button.pack(side="bottom", padx=20, pady=(0, 10))
 
+
     # Close right frame function
     def close_right_frame(self):
         self.right_frame.pack_forget()
+
 
     def show_guest_info(self, guest_info):
         for widget in self.right_frame.winfo_children():
@@ -114,6 +120,7 @@ class GuestListPage(ctk.CTkFrame):
                                        wraplength=wraplength, justify="left")
             extra_label.pack(anchor="w", padx=20, pady=2, fill="x")
 
+
     def build_search_filter_bar(self):
         self.search_filter_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0), expand=True, fill="x")
@@ -124,7 +131,8 @@ class GuestListPage(ctk.CTkFrame):
             text="Create Reservation",
             font=("Arial", 16, "bold"),
             width=180,
-            height=36
+            height=36,
+            command=self.create_reservation_popup
         )
         create_reservation_button.pack(side="left", padx=(0, 10))
 
@@ -176,6 +184,7 @@ class GuestListPage(ctk.CTkFrame):
         )
         quote_label.pack(side="right", padx=75)
 
+
     def filter_table(self):
         search_text = self.search_var.get().lower()
         selected_status = self.filter_var.get()
@@ -188,6 +197,7 @@ class GuestListPage(ctk.CTkFrame):
             if (search_text in name.lower() or not search_text) and \
                     (selected_status == "All Status" or status == selected_status):
                 self.treeview.insert("", "end", values=row)
+
 
     # Function to update payment status window pop up
     def update_payment_popup(self):
@@ -211,6 +221,7 @@ class GuestListPage(ctk.CTkFrame):
             payment_window.destroy()
 
         ctk.CTkButton(payment_window, text="Update", command=save_payment, width=120).pack(pady=20)
+
 
     # Function for guest information window pop up
     def build_left_table(self):
@@ -239,6 +250,7 @@ class GuestListPage(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y")
         self.treeview.configure(yscrollcommand=scrollbar.set)
 
+
     # Function to handle row selection in the table
     def on_row_select(self, event):
         selected_item = self.treeview.selection()
@@ -252,8 +264,25 @@ class GuestListPage(ctk.CTkFrame):
         else:
             self.right_frame.pack_forget()
 
-        # Create Guest function
 
+    # Create Reservation function
+    def create_reservation_popup(self):
+        selected_item = self.treeview.selection()
+        guest_info = None # Default to None if no guest is selected
+
+        if selected_item:
+            guest_info = self.treeview.item(selected_item[0], "values") # Get the selected guest's info
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Create Reservation")
+        popup.geometry("1600x800")
+        popup.grab_set()
+
+        frame = CreateReservation(popup, guest_info)
+        frame.pack(fill="both", expand=True)
+
+
+    # Create Guest function
     def create_guest_popup(self):
         popup = ctk.CTkToplevel(self)
         popup.title("Create Guest")
@@ -309,6 +338,7 @@ class GuestListPage(ctk.CTkFrame):
             width=150,
             height=36
         ).pack(side="left", padx=10, pady=10)
+
 
 
 if __name__ == "__main__":
