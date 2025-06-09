@@ -9,6 +9,8 @@ class RoomManagementPage(ctk.CTkFrame):
         super().__init__(parent)
         self.master.geometry("1600x800")
         self.configure(fg_color="#e0e0e0")
+        
+        #Placeholder Data
         self.room_data = [
             ["Room No.", "Room Type", "Price", "Status"],
             ["001", "Standard", "P5,000", "Available"],
@@ -80,30 +82,30 @@ class RoomManagementPage(ctk.CTkFrame):
         # Display guest information (placeholder data)
         labels = self.room_data[0]
         extra_info = {
-            "Email": "sunday@example.com",
-            "Pax": "5",
-            "Address": "123 Main St, City",
-            "Check-in Date": "2023-10-01",
-            "Special Requests": "Late check-in, Vegan meals",
-            "Room Type": "Deluxe Suite",
-            "Payment Status": "Paid",
-        }
+            "Description": "lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+            "Room Number": "001",
+            "Room Floor": "3rd Floor",
+            "Room Size": "100sqm",
+            "Room Type and Capacity": "Deluxe Suite, 2 Beds, 2-4 Pax",
+            "Amenities": "Wifi, Refrigrator, TV, Aircon, Bathtub",
+            "Status": "Available",
+                  }
 
-        wraplength = 200
+        wraplength = 450
 
         for i, value in enumerate(room_info):
             info_label = ctk.CTkLabel(self.right_frame, text=f"{labels[i]}: {value}", font=("Arial", 14),
                                       wraplength=wraplength, justify="left")
-            info_label.pack(anchor="w", padx=20, pady=2, fill="x")
+            info_label.pack(anchor="w", padx=20, pady=2)
 
         for key, value in extra_info.items():
             extra_label = ctk.CTkLabel(self.right_frame, text=f"{key}: {value}", font=("Arial", 14),
                                        wraplength=wraplength, justify="left")
-            extra_label.pack(anchor="w", padx=20, pady=2, fill="x")
+            extra_label.pack(anchor="w", padx=20, pady=2)
 
     def build_search_filter_bar(self):
         self.search_filter_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0), expand=True, fill="x")
+        self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0))
 
         # Create Room Button
         create_room_button = ctk.CTkButton(
@@ -115,7 +117,7 @@ class RoomManagementPage(ctk.CTkFrame):
         )
         create_room_button.pack(side="left", padx=(0, 10))
         
-        # Search Entry
+# Search Entry
         self.search_var = tk.StringVar()
         self.search_entry = ctk.CTkEntry(
             self.search_filter_frame,
@@ -127,7 +129,7 @@ class RoomManagementPage(ctk.CTkFrame):
         )
         self.search_entry.pack(side="left", padx=(0, 10))
 
-        # Filter Combobox
+# Filter Combobox
         self.filter_var = tk.StringVar(value="All Status")
         self.filter_combobox = ctk.CTkComboBox(
             self.search_filter_frame,
@@ -139,13 +141,12 @@ class RoomManagementPage(ctk.CTkFrame):
         )
         self.filter_combobox.pack(side="left", padx=(0, 10))
 
-        # Search/Filter Event Binding
+# Search/Filter Event Binding
         self.search_entry.bind("<KeyRelease>", lambda e: self.filter_table())
         self.filter_combobox.bind("<<ComboboxSelected>>", lambda e: self.filter_table())
 
         self.search_entry.bind("<KeyRelease>", lambda _: self.filter_table())
         self.filter_combobox.bind("<<ComboboxSelected>>", lambda _: self.filter_table())
-
 
     def filter_table(self):
         search_text = self.search_var.get().lower()
@@ -160,7 +161,7 @@ class RoomManagementPage(ctk.CTkFrame):
                (selected_status == "All Status" or status == selected_status):
                 self.treeview.insert("", "end", values=row)
 
-    #Edit Room Function
+#Edit Room Function
     def edit_room_popup(self):
         editRoom_window = ctk.CTkToplevel(self)
         editRoom_window.title("Edit Room")
@@ -169,14 +170,13 @@ class RoomManagementPage(ctk.CTkFrame):
         ctk.CTkLabel(editRoom_window, text="Edit Room", font=("Arial", 20, "bold")).pack(pady=(20, 10))
         ctk.CTkLabel(editRoom_window, text="lorem ipsum", font=("Arial", 14)).pack(pady=(30, 10))
 
-
         def save_edit():
             editRoom_window.destroy()
 
         ctk.CTkButton(editRoom_window, text="Save", font=("Arial", 16, "bold"), command=save_edit, width=120).pack(pady=20)
         ctk.CTkButton(editRoom_window, text="Delete Room", font=("Arial", 16, "bold"), width=120).pack(pady=20)
 
-    #Function for table
+#Function for table
     def build_left_table(self):
         self.left_frame = ctk.CTkFrame(self, width=1000, height=738, corner_radius=10,
                                        border_width=0, fg_color="transparent")
@@ -203,7 +203,7 @@ class RoomManagementPage(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y")
         self.treeview.configure(yscrollcommand=scrollbar.set)
 
-    #Function to handle row selection in the table
+#Function to handle row selection in the table
     def on_row_select(self, _):
         selected_item = self.treeview.selection()
         if selected_item:
@@ -216,11 +216,11 @@ class RoomManagementPage(ctk.CTkFrame):
         else:
             self.right_frame.pack_forget()
 
-
 #Temp run
 if __name__ == "__main__":
     root = ctk.CTk()
     app = RoomManagementPage(root)
+    root.title("Room Management")
     app.pack(fill="both",
              expand=True)
     root.mainloop()
