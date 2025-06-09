@@ -4,9 +4,11 @@ from tkinter import ttk
 
 from ui.reservations.createReservation import CreateReservation
 
-# Notes ni Sofia sa GUI
-# 1. Added create guest beside create reservation
-# 2. Fixed geometry of window to 1600x800
+#Notes ni Sofia sa GUI
+#1. Added create guest beside create reservation
+#2. Fixed geometry of window to 1600x800
+#3. added Guest ID in table
+#4. Removed Rooms in category
 
 ctk.set_appearance_mode("light")
 
@@ -15,6 +17,8 @@ class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.configure(fg_color="#f0f0f0")
+        self.master.geometry("1600x800")
+
 
         # Placeholder Data
         self.guest_data = [
@@ -195,7 +199,7 @@ class GuestListPage(ctk.CTkFrame):
         for row in self.guest_data[1:]:
             name, _, _, status = row
             if (search_text in name.lower() or not search_text) and \
-                    (selected_status == "All Status" or status == selected_status):
+                (selected_status == "All Status" or status == selected_status):
                 self.treeview.insert("", "end", values=row)
 
 
