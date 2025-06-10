@@ -15,7 +15,6 @@ ctk.set_appearance_mode("light")
 class RoomManagementPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
-        self.master.geometry("1600x800")
         self.configure(fg_color="#e0e0e0")
         
         #Placeholder Data

@@ -1,5 +1,5 @@
 # ============== Imports ==============
-import customtkinter as ctk                 # customtkinter'
+import customtkinter as ctk                 # customtkinter
 
 from ui.home.homeScreenPage import HomeScreenPage
 from ui.rooms.roomManagementPage import RoomManagementPage
@@ -33,16 +33,16 @@ class Dashboard(ctk.CTkFrame):
 
     # ============== Widget Creation ==============
     def create_widgets(self):
-        # Initialize all widgets and layout
 
         # ---- Sidebar Frame ----
-        self.sidebar = ctk.CTkFrame(self, corner_radius=0)
+        self.sidebar = ctk.CTkFrame(self, corner_radius=0, fg_color="#303644")
         self.sidebar.pack(side="left", fill="y")
 
         # ---- Sidebar Title ----
         self.sidebarLabel = ctk.CTkLabel(self.sidebar,
                                          text="The Reverie Hotel",
-                                         font=ctk.CTkFont(size=20, weight="bold") )
+                                         font=ctk.CTkFont(size=20, weight="bold"),
+                                         text_color="#ccc")
         self.sidebarLabel.pack(pady=(25, 25), padx=15)
 
         # ---- Navigation Buttons ----
@@ -50,6 +50,7 @@ class Dashboard(ctk.CTkFrame):
             btn = ctk.CTkButton(self.sidebar,
                                 text=page_name,
                                 hover_color="#838383",
+                                text_color="white",
                                 anchor="w",
                                 command=lambda n=page_name: self.select_page(n) )
             # Create sidebar buttons for each page and bind them to open the correct page.
@@ -91,9 +92,9 @@ class Dashboard(ctk.CTkFrame):
     def highlight_button(self, selected_page):
         for btn, page_name in self.buttons:
             if page_name == selected_page:
-                btn.configure(fg_color="#4a48df", text_color="white")       # Active
+                btn.configure(fg_color="#4a48df", text_color="#ccc")       # Active
             else:
-                btn.configure(fg_color="transparent", text_color="black")   # Inactive
+                btn.configure(fg_color="transparent", text_color="#ccc")   # Inactive
 
 
     # ============== Logout Handler ==============

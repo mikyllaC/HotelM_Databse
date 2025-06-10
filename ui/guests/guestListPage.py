@@ -17,7 +17,6 @@ class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.configure(fg_color="#f0f0f0")
-        self.master.geometry("1600x800")
 
 
         # Placeholder Data
