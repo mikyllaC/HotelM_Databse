@@ -1,6 +1,5 @@
 # ============== Imports ==============
 import customtkinter as ctk             # customtkinter
-import tkinter as tk
 
 from ui.dashboard.dashboard import Dashboard      # dashboard screen
 from ui.auth.loginScreen import LoginScreen # login screen
@@ -8,7 +7,7 @@ from utils.helpers import clear_screen, log
 
 
 def main():
-    ctk.set_appearance_mode("dark")    # set overall appearance mode: light/dark/system
+    ctk.set_appearance_mode("light")    # set overall appearance mode: light/dark/system
     ctk.set_default_color_theme("blue") # set default color theme
 
     app = Application()                 # creates the app
