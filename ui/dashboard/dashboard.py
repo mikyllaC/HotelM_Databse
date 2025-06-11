@@ -22,7 +22,7 @@ class Dashboard(ctk.CTkFrame):
 
         self.pages = {"Home": HomeScreenPage,
                       "Room Management": RoomManagementPage,
-                      "Guest List": GuestListPage,
+                      "Guest Management": GuestListPage,
                       "Reservations": ReservationsPage,
                       "Billing & Payment": BillingPaymentPage,
                       "Staff and Maintenance": StaffMaintenancePage,
@@ -41,7 +41,7 @@ class Dashboard(ctk.CTkFrame):
         icon_files = {
             "Home": "home.png",
             "Room Management": "room.png",
-            "Guest List": "guest.png",
+            "Guest Management": "guest.png",
             "Reservations": "reservations.png",
             "Billing & Payment": "billing.png",
             "Staff and Maintenance": "staff.png",
@@ -75,7 +75,7 @@ class Dashboard(ctk.CTkFrame):
                                          text="The Reverie Hotel",
                                          font=ctk.CTkFont(size=20, weight="bold"),
                                          text_color="#ccc")
-        self.navbarLabel.pack(side="left", padx=(15,25))
+        self.navbarLabel.pack(side="left", padx=(15,35))
 
         # ---- Navigation Buttons ----
         self.button_frame = ctk.CTkFrame(self.navbar, fg_color="transparent")
@@ -86,14 +86,13 @@ class Dashboard(ctk.CTkFrame):
             icon = self.icons.get(page_name)
             btn = ctk.CTkButton(self.button_frame,
                                 text=page_name,
-                                font=ctk.CTkFont(family="Helvetica", size=13),
+                                font=ctk.CTkFont(family="Roboto Condensed", size=14),
                                 image=icon,
                                 compound="left",  # Icon on the left
-                                border_spacing=15,
+                                border_spacing=12,
                                 width=0,
                                 corner_radius=0,
                                 hover_color="#282D38",
-                                text_color="white",
                                 command=lambda n=page_name: self.select_page(n))
             btn.pack(side="left")
             self.buttons[page_name] = btn  # Store the button in the dictionary
@@ -132,7 +131,7 @@ class Dashboard(ctk.CTkFrame):
             if page_name == selected_page:
                 btn.configure(fg_color="#20252E", text_color="white")       # Active
             else:
-                btn.configure(fg_color="transparent", text_color="#ccc")   # Inactive
+                btn.configure(fg_color="transparent", text_color="#d9d9d9")   # Inactive
 
 
     # ============== Logout Handler ==============

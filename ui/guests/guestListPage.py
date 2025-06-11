@@ -2,6 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk
 
+from models.guest import GuestModel
 from ui.reservations.createReservation import CreateReservation
 
 #Notes ni Sofia sa GUI
@@ -17,23 +18,11 @@ class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
         self.configure(fg_color="#f0f0f0")
-
-
-        # Placeholder Data
-        self.guest_data = [
-            ["Guest Name", "Contact Information", "Number of Rooms", "Status"],
-            ["James", "0916-123-1234", "3", "Checked In"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-        ]
+        self.guest_model = GuestModel()
+        self.guest_data = [["Guest ID", "Guest Name", "Contact Information", "Status"]]
 
         self.build_ui()
+        self.populate_guest_data()
 
 
     def build_ui(self):
@@ -99,12 +88,11 @@ class GuestListPage(ctk.CTkFrame):
             if isinstance(widget, ctk.CTkButton):
                 continue
             widget.destroy()
-        # Display guest information (placeholder data)
+
+        # Clear existing labels before showing new guest info
         labels = self.guest_data[0]
         extra_info = {
-            "Email": "sunday@example.com",
             "Pax": "5",
-            "Address": "123 Main St, City",
             "Check-in Date": "2023-10-01",
             "Special Requests": "Late check-in, Vegan meals",
             "Room Type": "Deluxe Suite",
@@ -113,11 +101,14 @@ class GuestListPage(ctk.CTkFrame):
 
         wraplength = 200
 
-        for i, value in enumerate(guest_info):
-            info_label = ctk.CTkLabel(self.right_frame, text=f"{labels[i]}: {value}", font=("Arial", 14),
-                                      wraplength=wraplength, justify="left")
-            info_label.pack(anchor="w", padx=20, pady=2, fill="x")
-
+        for i, label in enumerate(labels):
+            if i < len(guest_info):  # Make sure there's a corresponding value
+                value = guest_info[i]
+                info_label = ctk.CTkLabel(self.right_frame, text=f"{label}: {value}", font=("Arial", 14),
+                                          wraplength=wraplength, justify="left")
+                info_label.pack(anchor="w", padx=20, pady=2, fill="x")
+            else:
+                print(f"Warning: No value found for label {label}")
         for key, value in extra_info.items():
             extra_label = ctk.CTkLabel(self.right_frame, text=f"{key}: {value}", font=("Arial", 14),
                                        wraplength=wraplength, justify="left")
@@ -139,16 +130,16 @@ class GuestListPage(ctk.CTkFrame):
         )
         create_reservation_button.pack(side="left", padx=(0, 10))
 
-        # Create Guest Button
-        create_guest_button = ctk.CTkButton(
+        # Add Guest Button
+        add_guest_button = ctk.CTkButton(
             self.search_filter_frame,
-            text="Create Guest",
+            text="Add Guest",
             font=("Arial", 16, "bold"),
             width=150,
             height=36,
-            command=self.create_guest_popup
+            command=self.add_guest_popup
         )
-        create_guest_button.pack(side="left", padx=(0, 10))
+        add_guest_button.pack(side="left", padx=(0, 10))
 
         # Search Entry
         self.search_var = tk.StringVar()
@@ -188,18 +179,51 @@ class GuestListPage(ctk.CTkFrame):
         quote_label.pack(side="right", padx=75)
 
 
+    def populate_guest_data(self):
+        # Fetch guest data from the model
+        guest_data = self.guest_model.get_all_guests()
+
+        # If no guests, show a placeholder row
+        if not guest_data:
+            self.guest_data = [["Guest ID", "Guest Name", "Contact Information", "Status"],
+                               ["-", "-", "-", "-"]]
+        else:
+            # Add the header row to the guest_data
+            self.guest_data = [["Guest ID", "Name", "Contact Information", "Status"]] + [
+                [row[0], f"{row[1]} {row[2]}", row[3], row[6]] for row in guest_data
+            ]
+
+        # Populate the treeview with guest data
+        self.update_treeview()
+
+
     def filter_table(self):
         search_text = self.search_var.get().lower()
         selected_status = self.filter_var.get()
 
+        filtered_data = [self.guest_data[0]]  # Keep the header row
+        for row in self.guest_data[1:]:
+            # Ensure row has the expected number of columns
+            if len(row) == 4:
+                guest_id, name, contact, status = row
+                if (search_text in name.lower() or not search_text) and \
+                        (selected_status == "All Status" or status == selected_status):
+                    filtered_data.append(row)
+            else:
+                print(f"Skipping row with unexpected number of columns: {row}")
+        # Update the treeview with the filtered data
+        self.update_treeview(filtered_data)
+
+
+    def update_treeview(self, data=None):
+        if data is None:
+            data = self.guest_data
+        # Clear existing data in the treeview
         for item in self.treeview.get_children():
             self.treeview.delete(item)
-
-        for row in self.guest_data[1:]:
-            name, _, _, status = row
-            if (search_text in name.lower() or not search_text) and \
-                (selected_status == "All Status" or status == selected_status):
-                self.treeview.insert("", "end", values=row)
+        # Populate the treeview with the provided data
+        for row in data[1:]:
+            self.treeview.insert("", "end", values=row)
 
 
     # Function to update payment status window pop up
@@ -244,8 +268,7 @@ class GuestListPage(ctk.CTkFrame):
             self.treeview.heading(col, text=col, anchor="w")
             self.treeview.column(col, width=200, anchor="w")
 
-        for row in self.guest_data[1:]:
-            self.treeview.insert("", "end", values=row)
+        self.update_treeview()
 
         self.treeview.bind("<<TreeviewSelect>>", self.on_row_select)
 
@@ -285,62 +308,20 @@ class GuestListPage(ctk.CTkFrame):
         frame.pack(fill="both", expand=True)
 
 
-    # Create Guest function
-    def create_guest_popup(self):
+    # Add Guest function
+    def add_guest_popup(self):
+        from ui.guests.createGuest import AddGuestFrame
+
         popup = ctk.CTkToplevel(self)
-        popup.title("Create Guest")
-        popup.geometry("450x600")
+        popup.title("Add Guest")
+        popup.geometry("575x750")
+        popup.grab_set()
 
-        ctk.CTkLabel(popup, text="Create New Guest", font=("Arial", 20, "bold")).pack(pady=(20, 10))
+        frame = AddGuestFrame(popup, self)
+        frame.pack(fill="both", expand=True)
 
-        name_var = tk.StringVar()
-        contact_var = tk.StringVar()
-        rooms_var = tk.StringVar()
-        status_var = tk.StringVar(value="Checked In")
-
-        ctk.CTkLabel(popup, text="First Name:", font=("Arial", 14)).pack(pady=(10, 0))
-        first_name_var = tk.StringVar()
-        first_name_entry = ctk.CTkEntry(popup, textvariable=first_name_var, width=250)
-        first_name_entry.pack()
-
-        ctk.CTkLabel(popup, text="Last Name:", font=("Arial", 14)).pack(pady=(10, 0))
-        last_name_var = tk.StringVar()
-        last_name_entry = ctk.CTkEntry(popup, textvariable=last_name_var, width=250)
-        last_name_entry.pack()
-
-        ctk.CTkLabel(popup, text="Contact Information:", font=("Arial", 14)).pack(pady=(10, 0))
-        contact_entry = ctk.CTkEntry(popup, textvariable=contact_var, width=250)
-        contact_entry.pack()
-
-        ctk.CTkLabel(popup, text="Email:", font=("Arial", 14)).pack(pady=(10, 0))
-        email_var = tk.StringVar()
-        email_entry = ctk.CTkEntry(popup, textvariable=email_var, width=250)
-        email_entry.pack()
-
-        def on_create():
-            popup.destroy()
-
-        # Button Frame for Create and Close buttons
-        button_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        button_frame.pack(pady=10)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Create Guest",
-            font=("Arial", 16, "bold"),
-            width=150,
-            height=36,
-        ).pack(side="left", padx=20, pady=10)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Close",
-            font=("Arial", 16, "bold"),
-            fg_color="#e57373",
-            command=on_create,
-            width=150,
-            height=36
-        ).pack(side="left", padx=10, pady=10)
+        # Refresh the guest list after creating a new guest
+        frame.submit_button.configure(command=lambda: [frame.add_guest(), self.populate_guest_data()])
 
 
 

@@ -103,7 +103,7 @@ class EmployeeModel():
                       employee_data.get("HIRE_DATE"),
                       employee_data.get("SALARY"),
                       employee_data.get("ASSIGNED_TO"),
-                      employee_data.get("STATUS", "active")
+                      employee_data.get("STATUS", "Available")
                       ))
             conn.commit()
 
@@ -121,7 +121,7 @@ class EmployeeModel():
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-            SELECT FIRST_NAME, LAST_NAME, EMPLOYEE_ID, POSITION, ASSIGNED_TO,STATUS
+            SELECT *
             FROM EMPLOYEE""")
             return cursor.fetchall()
 
