@@ -1,4 +1,8 @@
 import customtkinter as ctk
+from tkinter import messagebox
+
+from models.guest import GuestModel
+from utils.helpers import log
 
 
 class AddGuestFrame(ctk.CTkFrame):
@@ -18,6 +22,8 @@ class AddGuestFrame(ctk.CTkFrame):
         super().__init__(parent_popup)
         self.configure(fg_color="white")
         self.parent_page = parent_page
+        self.guest_model = GuestModel()
+
         self.create_widgets()
 
     # ============== Widget Creation ==============
@@ -72,7 +78,7 @@ class AddGuestFrame(ctk.CTkFrame):
         label.grid(row=2, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
         entry = ctk.CTkEntry(form_frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT,
                              border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR,
-                             placeholder_text="0912 345 6789")
+                             placeholder_text="09123456789")
         entry.grid(row=2, column=1, sticky="w", padx=(0, 20), pady=10)
         self.entries["entry_contact_number"] = entry
 
@@ -168,7 +174,7 @@ class AddGuestFrame(ctk.CTkFrame):
         # ========== Status ==========
         label = ctk.CTkLabel(form_frame, text="Status *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
         label.grid(row=5, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        status_dropdown = ctk.CTkOptionMenu(form_frame, values=["Checked In", "Checked Out", "In Transit"])
+        status_dropdown = ctk.CTkOptionMenu(form_frame, values=["Checked Out", "Checked In", "In Transit"])
         status_dropdown.grid(row=5, column=1, sticky="w", padx=(0, 20), pady=10)
         self.entries["entry_status"] = status_dropdown
 
@@ -188,6 +194,9 @@ class AddGuestFrame(ctk.CTkFrame):
 
 
     def on_submit(self):
+        if not self.validate_form():
+            return
+
         address_line_1 = self.entries["entry_address_l1"].get()
         address_line_2 = self.entries["entry_address_l2"].get()
         city = self.entries["entry_city"].get()
@@ -195,25 +204,49 @@ class AddGuestFrame(ctk.CTkFrame):
         postal_code = self.entries["entry_postal"].get()
         country = self.entries["entry_country"].get()
 
-        address = f"{address_line_1}"
-        if address_line_2:
-            address += f", {address_line_2}"
-        address += f", {city}, {state}, {postal_code}, {country}"
+        # Build address, skipping empty fields
+        address_parts = [address_line_1, address_line_2, city, state, postal_code, country]
+        address = ', '.join([part for part in address_parts if part])
 
         # Collect data from entries and dropdowns
         guest_data = {
-            "FIRST_NAME": self.entries["entry_first_name"].get(),
-            "LAST_NAME": self.entries["entry_last_name"].get(),
-            "CONTACT_NUMBER": self.entries["entry_contact_number"].get(),
-            "EMAIL": self.entries["entry_email"].get(),
-            "ADDRESS": address.strip(', '),  # Remove trailing comma and space if any
+            "FIRST_NAME": self.entries["entry_first_name"].get().strip(),
+            "LAST_NAME": self.entries["entry_last_name"].get().strip(),
+            "CONTACT_NUMBER": self.entries["entry_contact_number"].get().strip(),
+            "EMAIL": self.entries["entry_email"].get().strip(),
+            "ADDRESS": address,
             "STATUS": self.entries["entry_status"].get()
         }
 
-        # Here you would typically call a method to save this data to the database
-        # For example: self.guest_model.add_guest(guest_data)
+        try:
+            self.guest_model.add_guest(guest_data)
+            log("Guest created with data: {guest_data}")
+            messagebox.showinfo("Success", "Guest added successfully!")
+            if self.parent_page:
+                self.parent_page.populate_guest_data()
+        except Exception as e:
+            log(f"Error adding guest: {str(e)}")
+            messagebox.showerror("Error", f"Failed to add guest: {e}")
 
-        print("Guest created with data:", guest_data)
+
+    def validate_form(self):
+        if not self.entries["entry_first_name"].get().strip():
+            messagebox.showerror("Missing Required Field", "First Name is required.")
+            log("First Name is required.")
+            return False
+        if not self.entries["entry_contact_number"].get().strip():
+            messagebox.showerror("Missing Required Field", "Last Name is required.")
+            log("Contact Number is required.")
+            return False
+        if not self.entries["entry_contact_number"].get().strip():
+            messagebox.showerror("Missing Required Field", "Contact Number is required.")
+            log("Contact Number is required.")
+            return False
+        if not self.entries["entry_email"].get().strip():
+            messagebox.showerror("Missing Required Field", "Email Address is required.")
+            log("Email Address is required.")
+            return False
+        return True
 
 
     def reset_form(self):
@@ -221,3 +254,4 @@ class AddGuestFrame(ctk.CTkFrame):
         for entry in self.entries.values():
             if isinstance(entry, ctk.CTkEntry):
                 entry.delete(0, 'end')
+        self.entries["entry_status"].set("Checked Out")  # Resetting to default value

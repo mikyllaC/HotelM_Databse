@@ -5,14 +5,6 @@ from tkinter import ttk
 from models.guest import GuestModel
 from ui.reservations.createReservation import CreateReservation
 
-#Notes ni Sofia sa GUI
-#1. Added create guest beside create reservation
-#2. Fixed geometry of window to 1600x800
-#3. added Guest ID in table
-#4. Removed Rooms in category
-
-ctk.set_appearance_mode("light")
-
 
 class GuestListPage(ctk.CTkFrame):
     def __init__(self, parent):
@@ -310,7 +302,7 @@ class GuestListPage(ctk.CTkFrame):
 
     # Add Guest function
     def add_guest_popup(self):
-        from ui.guests.createGuest import AddGuestFrame
+        from ui.guests.addGuest import AddGuestFrame
 
         popup = ctk.CTkToplevel(self)
         popup.title("Add Guest")
@@ -319,10 +311,6 @@ class GuestListPage(ctk.CTkFrame):
 
         frame = AddGuestFrame(popup, self)
         frame.pack(fill="both", expand=True)
-
-        # Refresh the guest list after creating a new guest
-        frame.submit_button.configure(command=lambda: [frame.add_guest(), self.populate_guest_data()])
-
 
 
 if __name__ == "__main__":
