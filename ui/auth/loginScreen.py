@@ -81,9 +81,11 @@ class LoginScreen(ctk.CTkFrame):
             return
 
         user = self.auth_model.login(employee_id=employee_id, password=password)
+        print(f"User object returned: {user}")
 
         if user:
             Session.current_user = user
+            print(f"Current User: {Session.current_user}")
 
             full_name = f"{user['FIRST_NAME']} {user['LAST_NAME']}"
             log(f"Login success: [{employee_id}] - {full_name}")

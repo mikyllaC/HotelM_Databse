@@ -3,10 +3,9 @@ from tkinter import messagebox
 
 from models.guest import GuestModel
 from utils.helpers import log
-from utils.session import Session
 
 
-class AddGuestFrame(ctk.CTkFrame):
+class EditGuestFrame(ctk.CTkFrame):
     FONT_LABEL = ("Roboto", 14)
     FONT_ENTRY = ("Roboto", 10)
     FONT_ENTRY_LABEL = ("Roboto", 12)
@@ -19,14 +18,19 @@ class AddGuestFrame(ctk.CTkFrame):
     PADX_LABEL = (20, 80)
 
 
-    def __init__(self, parent_popup, parent_page=None):
+    def __init__(self, parent_popup, parent_page=None, guest_id=None):
         super().__init__(parent_popup)
         self.configure(fg_color="white")
         self.parent_page = parent_page
+        self.guest_id = guest_id
         self.guest_model = GuestModel()
 
         self.entries = {}  # Store references to all entry widgets for later access
         self.create_widgets()
+
+        if guest_id:
+            self.load_guest_data(guest_id)
+
 
     # ============== Widget Creation ==============
     def create_widgets(self):
@@ -36,17 +40,21 @@ class AddGuestFrame(ctk.CTkFrame):
                                     corner_radius=0)
         header_frame.pack(fill="x")
 
-        header = ctk.CTkLabel(header_frame, text="Add Guest", font=("Roboto Condensed", 24), text_color="black")
+        header = ctk.CTkLabel(header_frame, text="Edit Guest", font=("Roboto Condensed", 24), text_color="black")
         header.pack(pady=(20, 20))
 
         bottom_border = ctk.CTkFrame(header_frame, height=1, fg_color="#D3D3D3", border_width=1)
         bottom_border.pack(fill="x", side="bottom")
 
+        # ========== Guest ID ==========
+        if self.guest_id:
+            id_label = ctk.CTkLabel(self, text=f"Guest ID: {self.guest_id}", font=("Roboto Mono", 12, "bold"),
+                                    text_color="#5c5c5c")
+            id_label.pack()
+
         # ========== Form Frame ==========
         form_frame = ctk.CTkFrame(self, fg_color="transparent")
         form_frame.pack(padx=40, pady=(50,20), fill="both", expand=True)
-        #form_frame.grid_columnconfigure(0, weight=1)  # Make both columns expand equally
-        #form_frame.grid_columnconfigure(1, weight=5)
 
         # ========== Name ==========
         name_label = ctk.CTkLabel(form_frame, text="Name *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
@@ -181,9 +189,9 @@ class AddGuestFrame(ctk.CTkFrame):
         button_frame.grid(row=6, column=1, pady=(50, 20), sticky="ew")
 
         # ========== Submit Button ==========
-        self.submit_button = ctk.CTkButton(button_frame, text="Add", command=self.on_submit,
+        self.update_button = ctk.CTkButton(button_frame, text="Update", command=self.on_update,
                                            height=30, width=80)
-        self.submit_button.grid(row=6, column=1, padx=(0,10), sticky="w")
+        self.update_button.grid(row=6, column=1, padx=(0,10), sticky="w")
 
         # ========== Rest Button ==========
         self.reset_button = ctk.CTkButton(button_frame, text="Reset", command=self.reset_form,
@@ -192,11 +200,30 @@ class AddGuestFrame(ctk.CTkFrame):
         self.reset_button.grid(row=6, column=2, sticky="w")
 
 
-    def on_submit(self):
+    def load_guest_data(self, guest_id):
+        guest = self.guest_model.get_guest_by_id(guest_id)
+        if not guest:
+            messagebox.showerror("Error", "Guest not found.")
+            return
+
+        # Fill in fields
+        self.entries["entry_first_name"].insert(0, guest["FIRST_NAME"])
+        self.entries["entry_last_name"].insert(0, guest["LAST_NAME"])
+        self.entries["entry_contact_number"].insert(0, guest["CONTACT_NUMBER"])
+        self.entries["entry_email"].insert(0, guest["EMAIL"])
+        self.entries["entry_address_l1"].insert(0, guest["ADDRESS_LINE1"])
+        self.entries["entry_address_l2"].insert(0, guest["ADDRESS_LINE2"])
+        self.entries["entry_city"].insert(0, guest["CITY"])
+        self.entries["entry_state"].insert(0, guest["STATE"])
+        self.entries["entry_postal"].insert(0, guest["POSTAL_CODE"])
+        self.entries["entry_country"].insert(0, guest["COUNTRY"])
+        self.entries["entry_status"].set(guest["STATUS"])
+
+
+    def on_update(self):
         if not self.validate_form():
             return
 
-        employee_id = Session.current_user['EMPLOYEE_ID'] if Session.current_user else ''
 
         # Collect data from entries and dropdowns
         guest_data = {
@@ -204,25 +231,24 @@ class AddGuestFrame(ctk.CTkFrame):
             "LAST_NAME": self.entries["entry_last_name"].get().strip(),
             "CONTACT_NUMBER": self.entries["entry_contact_number"].get().strip(),
             "EMAIL": self.entries["entry_email"].get().strip(),
-            "ADDRESS_LINE1": self.entries["entry_address_l1"].get().strip(),
-            "ADDRESS_LINE2": self.entries["entry_address_l2"].get().strip(),
-            "CITY": self.entries["entry_city"].get().strip(),
-            "STATE": self.entries["entry_state"].get().strip(),
-            "POSTAL_CODE": self.entries["entry_postal"].get().strip(),
-            "COUNTRY": self.entries["entry_country"].get().strip(),
-            "STATUS": self.entries["entry_status"].get(),
-            "EMPLOYEE_ID": employee_id
+            "ADDRESS_LINE1": self.entries["entry_address_l1"].get(),
+            "ADDRESS_LINE2": self.entries["entry_address_l2"].get(),
+            "CITY": self.entries["entry_city"].get(),
+            "STATE": self.entries["entry_state"].get(),
+            "POSTAL_CODE": self.entries["entry_postal"].get(),
+            "COUNTRY": self.entries["entry_country"].get(),
+            "STATUS": self.entries["entry_status"].get()
         }
 
         try:
-            self.guest_model.add_guest(guest_data)
-            messagebox.showinfo("Success", "Guest added successfully!")
+            self.guest_model.update_guest(self.guest_id, guest_data)
+            messagebox.showinfo("Success", "Guest updated successfully!")
             if self.parent_page:
                 self.parent_page.populate_guest_data()
             self.master.destroy()
         except Exception as e:
-            log(f"Error adding guest: {str(e)}")
-            messagebox.showerror("Error", f"Failed to add guest: {e}")
+            log(f"Error updating guest: {str(e)}")
+            messagebox.showerror("Error", f"Failed to update guest: {e}")
 
 
     def validate_form(self):
@@ -251,5 +277,3 @@ class AddGuestFrame(ctk.CTkFrame):
             if isinstance(entry, ctk.CTkEntry):
                 entry.delete(0, 'end')
         self.entries["entry_status"].set("Checked Out")  # Resetting to default value
-
-

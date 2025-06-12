@@ -86,10 +86,10 @@ class Dashboard(ctk.CTkFrame):
             icon = self.icons.get(page_name)
             btn = ctk.CTkButton(self.button_frame,
                                 text=page_name,
-                                font=ctk.CTkFont(family="Roboto Condensed", size=14),
+                                font=ctk.CTkFont(family="Roboto", size=14),
                                 image=icon,
                                 compound="left",  # Icon on the left
-                                border_spacing=12,
+                                border_spacing=14,
                                 width=0,
                                 corner_radius=0,
                                 hover_color="#282D38",
