@@ -196,6 +196,8 @@ class AddRoomFrame(ctk.CTkFrame):
             log(f"[DEBUG] Attempting to add room with data: {room_data}")
             room_id = self.room_model.add_room(room_data)
             log(f"Room added successfully with ID: {room_id}")
+
+
             messagebox.showinfo("Success", "Room added successfully!")
             if self.parent_page:
                 self.parent_page.populate_treeview()
@@ -240,3 +242,5 @@ class AddRoomFrame(ctk.CTkFrame):
             self.room_type_dropdown.set(selected_type)
         else:
             self.room_type_dropdown.set("")
+
+

@@ -1,9 +1,10 @@
 import customtkinter as ctk
 from tkinter import messagebox, filedialog, simpledialog
+import os
+import shutil
 
 from models.room import RoomModel
 from ui.components.customDropdown import CustomDropdown
-#from ui.components.multiSelectDropdown import MultiSelectDropdown
 from utils.helpers import log
 
 
@@ -39,6 +40,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         self.image_path = None
         self.image_label = None
         self.amenities = []
+        self.amenities_map = {}
         for amenity in self.room_model.get_all_amenities():
             self.amenities.append(amenity['AMENITY_NAME'])
 
@@ -246,7 +248,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             options=self.amenities, placeholder="Select amenities...",
             width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT,
             add_new_option=True, add_new_text="Amenity",
-            add_new_callback=self.handle_add_new_amenity,
+            add_new_callback=self.add_room_amenity_popup,
             entry_name="entry_amenities",
             multiselect=True
         )
@@ -268,23 +270,50 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
 
     def upload_image(self):
+        log("Opening file dialog to upload image")
+        # Open file dialog to select an image
         filetypes = [("Image files", "*.png;*.jpg;*.jpeg;*.gif"), ("All files", "*.*")]
         path = filedialog.askopenfilename(title="Select Image", filetypes=filetypes)
+
         if path:
-            self.image_path = path
-            self.image_label.configure(text=path.split("/")[-1])
+            log(f"Image selected: {path}")
+
+            # Ensure the uploads directory exists
+            uploads_dir = os.path.join(os.path.dirname(__file__), "assets", "uploads")
+            # Create the directory if it doesn't exist
+            os.makedirs(uploads_dir, exist_ok=True)
+            # Copy the file to the uploads directory
+            filename = os.path.basename(path)
+            dest_path = os.path.join(uploads_dir, filename)
+
+            # If file with same name exists, add a number
+            base, ext = os.path.splitext(filename)
+            counter = 1
+            while os.path.exists(dest_path):
+                filename = f"{base}_{counter}{ext}"
+                dest_path = os.path.join(uploads_dir, filename)
+                counter += 1
+
+            # Copy the file to the destination
+            shutil.copy2(path, dest_path)
+            self.image_path = filename  # Store only the filename
+            self.image_label.configure(text=filename)
         else:
             self.image_path = None
             self.image_label.configure(text="No image selected")
 
-    def handle_add_new_amenity(self, dropdown):
-        new_amenity = simpledialog.askstring("Add New Amenity", "Amenity name:")
-        if new_amenity and new_amenity.strip():
-            new_amenity = new_amenity.strip()
-            if new_amenity not in dropdown.options:
-                dropdown.options.append(new_amenity)
-                dropdown.selected_values.add(new_amenity)
-                dropdown.update_tags()
+
+    def add_room_amenity_popup(self):
+        from ui.rooms.addRoomAmenity import AddRoomAmenityFrame
+        log("Opening Add Room Amenity popup")
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Add Room Amenity")
+        popup.geometry("480x300")
+        popup.grab_set()
+
+        popup = AddRoomAmenityFrame(parent_popup=popup, parent_page=self)
+        popup.pack(fill="both", expand=True)
 
 
     def validate_form(self):
@@ -324,14 +353,18 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         room_type_data = {
             "TYPE_NAME": self.entries["entry_type_name"].get().strip(),
             "BED_TYPE": self.bed_type_dropdown.get(),
-            "BASE_ADULTS": int(self.entries["entry_base_adults"].get().strip()),
-            "EXTRA_ADULTS": int(self.entries["entry_extra_adults"].get().strip()),
+            "BASE_ADULT_NUM": int(self.entries["entry_base_adults"].get().strip()),
+            "BASE_CHILD_NUM": int(self.entries["entry_base_children"].get().strip())
+            if self.entries["entry_base_children"].get().strip() else 0,
+            "EXTRA_ADULT_NUM": int(self.entries["entry_extra_adults"].get().strip()),
+            "EXTRA_CHILD_NUM": int(self.entries["entry_extra_children"].get().strip())
+            if self.entries["entry_extra_children"].get().strip() else 0,
             "MAX_OCCUPANCY": int(self.entries["entry_max_occupancy"].get().strip()),
             "BASE_RATE": float(self.entries["entry_base_rate"].get().strip()),
             "EXTRA_ADULT_CHARGE": float(self.entries["entry_extra_adult_charge"].get().strip()),
             "EXTRA_CHILD_CHARGE": float(self.entries["entry_extra_child_charge"].get().strip()),
             "DESCRIPTION": self.entries["entry_description"].get().strip(),
-            "IMAGE": self.image_path,
+            "IMAGE": self.image_path,  # Only filename is stored
             "AMENITIES": self.amenity_dropdown.get()
         }
         try:
@@ -361,13 +394,34 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
     def reset_form(self):
         log("Resetting form fields")
+
+        # Reset regular entry fields
         for entry in self.entries.values():
             if hasattr(entry, "delete"):
                 entry.delete(0, "end")
-        if hasattr(self, "bed_type_dropdown"):
-            self.bed_type_dropdown.set("")
+
+        self.bed_type_dropdown.set("")
+        self.amenity_dropdown.set("")
 
         # Reset image
         self.image_path = None
         if self.image_label:
             self.image_label.configure(text="No image selected")
+
+
+    def refresh_amenities(self, selected_amenity=None):
+        """Refresh the amenities list after adding a new amenity"""
+        self.amenities = []
+        self.amenity_map = {}
+
+        for amenity in self.room_model.get_all_amenities():
+            self.amenities.append(amenity['AMENITY_NAME'])
+            self.amenity_map[amenity['AMENITY_NAME']] = amenity['AMENITY_ID']
+
+        # If you have an amenities dropdown, update it here
+        if hasattr(self, 'amenity_dropdown') and hasattr(self.amenity_dropdown, 'set_options'):
+            self.amenity_dropdown.set_options(self.amenities)
+
+        # Set the selected amenity if provided
+        if selected_amenity and selected_amenity in self.amenities and hasattr(self, 'amenity_dropdown'):
+            self.amenity_dropdown.set(selected_amenity)

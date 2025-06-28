@@ -163,7 +163,7 @@ class RoomManagementPage(ctk.CTkFrame):
         self.treeview.column("Notes", width=400, anchor="w")
 
 
-        def show_room_info(room_values, room_id):
+        def show_room_info(room_values):
             for widget in self.right_frame.winfo_children():
                 widget.destroy()
 
@@ -281,7 +281,7 @@ class RoomManagementPage(ctk.CTkFrame):
             else:
                 room_type_id, room_type_name, bed_type, capacity, extra_capacity = ["Unknown"] * 5
 
-            amenities = self.room_model.get_amenities_for_room(room_id)
+            amenities = self.room_model.get_amenities_for_room_type(room_type_id)
 
             info_rows = [
                 ("Type ID", room_type_id),
@@ -334,9 +334,8 @@ class RoomManagementPage(ctk.CTkFrame):
 
             if selected_item:
                 item_values = self.treeview.item(selected_item, 'values')
-                room_id = selected_item[0]
                 self.right_frame.place(relx=1, rely=0, anchor="ne", relwidth=0.5, relheight=1)
-                show_room_info(item_values, room_id)
+                show_room_info(item_values)
 
         self.treeview.bind("<<TreeviewSelect>>", on_row_select)
 

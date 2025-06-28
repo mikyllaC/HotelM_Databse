@@ -4,29 +4,29 @@ from utils.helpers import log, get_connection
 def main():
     room_model = RoomModel()
 
-    sample_room_type_data = {
-        "TYPE_NAME": "Standard Room",
-        "BED_TYPE": "Queen",
-        "CAPACITY": 2,  # Base adult capacity
-        "EXTRA_CAPACITY": 1,  # Extra capacity for additional guests
-        "BASE_PRICE": 99.99,  # Base rate per night
-        "EXTRA_ADULT_RATE": 25.0,  # Cost for extra adult
-        "EXTRA_CHILD_RATE": 15.0,  # Cost for extra child
-        "IMAGE": "standard_room.jpg",
-        "DESCRIPTION": "Comfortable standard room with one queen bed"
-    }
-    room_type_id = room_model.add_room_type(sample_room_type_data)
-
-    sample_room_data = {
-        "ROOM_NUMBER": "101",
-        "ROOM_TYPE_ID": room_type_id,
-        "FLOOR": 1,
-        "STATUS": "Available",
-        "NOTES": "Newly renovated"
-    }
-    room_id = room_model.add_room(sample_room_data)
-    amenity_id = room_model.add_amenity("Air Conditioning")
-    room_model.assign_amenity_to_room(room_id, amenity_id)
+    # sample_room_type_data = {
+    #     "TYPE_NAME": "Standard Room",
+    #     "BED_TYPE": "Queen",
+    #     "CAPACITY": 2,  # Base adult capacity
+    #     "EXTRA_CAPACITY": 1,  # Extra capacity for additional guests
+    #     "BASE_PRICE": 99.99,  # Base rate per night
+    #     "EXTRA_ADULT_RATE": 25.0,  # Cost for extra adult
+    #     "EXTRA_CHILD_RATE": 15.0,  # Cost for extra child
+    #     "IMAGE": "standard_room.jpg",
+    #     "DESCRIPTION": "Comfortable standard room with one queen bed"
+    # }
+    # room_type_id = room_model.add_room_type(sample_room_type_data)
+    #
+    # sample_room_data = {
+    #     "ROOM_NUMBER": "101",
+    #     "ROOM_TYPE_ID": room_type_id,
+    #     "FLOOR": 1,
+    #     "STATUS": "Available",
+    #     "NOTES": "Newly renovated"
+    # }
+    # room_id = room_model.add_room(sample_room_data)
+    # amenity_id = room_model.add_amenity("Air Conditioning")
+    # room_model.assign_amenity_to_room(room_id, amenity_id)
 
 
 class RoomModel:
@@ -72,14 +72,23 @@ class RoomModel:
                     AMENITY_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     AMENITY_NAME TEXT NOT NULL UNIQUE
                 )""")
-            # Mapping table to link ROOM and ROOM_AMENITY
+            # # Mapping table to link ROOM and ROOM_AMENITY
+            # cursor.execute("""
+            #     CREATE TABLE IF NOT EXISTS ROOM_AMENITY_MAP (
+            #         ROOM_ID INTEGER NOT NULL,
+            #         AMENITY_ID INTEGER NOT NULL,
+            #         FOREIGN KEY (ROOM_ID) REFERENCES ROOM(ROOM_ID),
+            #         FOREIGN KEY (AMENITY_ID) REFERENCES ROOM_AMENITY(AMENITY_ID),
+            #         PRIMARY KEY (ROOM_ID, AMENITY_ID)
+            #     )""")
+            # Mapping table to link ROOM_TYPE and ROOM_AMENITY
             cursor.execute("""
-                CREATE TABLE IF NOT EXISTS ROOM_AMENITY_MAP (
-                    ROOM_ID INTEGER NOT NULL,
+                CREATE TABLE IF NOT EXISTS ROOM_TYPE_AMENITY_MAP (
+                    ROOM_TYPE_ID INTEGER NOT NULL,
                     AMENITY_ID INTEGER NOT NULL,
-                    FOREIGN KEY (ROOM_ID) REFERENCES ROOM(ROOM_ID),
+                    FOREIGN KEY (ROOM_TYPE_ID) REFERENCES ROOM_TYPE(ROOM_TYPE_ID),
                     FOREIGN KEY (AMENITY_ID) REFERENCES ROOM_AMENITY(AMENITY_ID),
-                    PRIMARY KEY (ROOM_ID, AMENITY_ID)
+                    PRIMARY KEY (ROOM_TYPE_ID, AMENITY_ID)
                 )""")
             conn.commit()
             log("Room tables created successfully.")
@@ -166,6 +175,16 @@ class RoomModel:
             log(f"Amenity ID {amenity_id} assigned to Room ID {room_id} successfully.")
 
 
+    def assign_amenity_to_room_type(self, room_type_id: int, amenity_id: int):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT OR IGNORE INTO ROOM_TYPE_AMENITY_MAP (ROOM_TYPE_ID, AMENITY_ID)
+                VALUES (?, ?)""", (room_type_id, amenity_id))
+            conn.commit()
+            log(f"Amenity ID {amenity_id} assigned to Room Type ID {room_type_id} successfully.")
+
+
     def get_all_rooms(self):
         with get_connection() as conn:
             cursor = conn.cursor()
@@ -214,17 +233,30 @@ class RoomModel:
                 return None
 
 
-    def get_amenities_for_room(self, room_id: int):
+    # def get_amenities_for_room(self, room_id: int):
+    #     with get_connection() as conn:
+    #         cursor = conn.cursor()
+    #         cursor.execute("""
+    #             SELECT a.AMENITY_NAME
+    #             FROM ROOM_AMENITY a
+    #             JOIN ROOM_AMENITY_MAP m ON a.AMENITY_ID = m.AMENITY_ID
+    #             WHERE m.ROOM_ID = ?
+    #         """, (room_id,))
+    #         amenities = cursor.fetchall()
+    #         #log(f"Retrieved {len(amenities)} amenities for Room ID {room_id}.")
+    #         return [amenity[0] for amenity in amenities]
+
+
+    def get_amenities_for_room_type(self, room_type_id: int):
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT a.AMENITY_NAME 
                 FROM ROOM_AMENITY a
-                JOIN ROOM_AMENITY_MAP m ON a.AMENITY_ID = m.AMENITY_ID
-                WHERE m.ROOM_ID = ?
-            """, (room_id,))
+                JOIN ROOM_TYPE_AMENITY_MAP m ON a.AMENITY_ID = m.AMENITY_ID
+                WHERE m.ROOM_TYPE_ID = ?
+            """, (room_type_id,))
             amenities = cursor.fetchall()
-            #log(f"Retrieved {len(amenities)} amenities for Room ID {room_id}.")
             return [amenity[0] for amenity in amenities]
 
 
