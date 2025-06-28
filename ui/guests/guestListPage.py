@@ -26,7 +26,8 @@ class GuestListPage(ctk.CTkFrame):
 
     def create_widgets(self):
         # Title Label
-        title_label = ctk.CTkLabel(self, text="Guest Management", font=("Roboto Condensed", 28, "bold"))
+        title_label = ctk.CTkLabel(self, text="Guest Management", font=("Roboto Condensed", 28, "bold"),
+                                   text_color="#303644")
         title_label.pack(anchor="nw", pady=(20, 20), padx=(35, 0))
 
         # Action Bar Frame
@@ -88,7 +89,7 @@ class GuestListPage(ctk.CTkFrame):
         self.table_frame.pack(padx=(10, 10), pady=(15, 10), fill="both", expand=True, anchor="n")
 
         # Right Frame
-        self.right_frame = ctk.CTkFrame(self, width=300, fg_color=self.BG_COLOR_2,
+        self.right_frame = ctk.CTkFrame(self, width=300, fg_color=self.BG_COLOR_2, corner_radius=0,
                                         border_width=1, border_color=self.BORDER_COLOR)
         self.right_frame.place(relx=1, rely=0, anchor="ne", relwidth=0.25, relheight=1)
         #initially hidden

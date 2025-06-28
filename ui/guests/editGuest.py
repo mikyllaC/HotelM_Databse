@@ -46,11 +46,13 @@ class EditGuestFrame(ctk.CTkFrame):
         bottom_border = ctk.CTkFrame(header_frame, height=1, fg_color="#D3D3D3", border_width=1)
         bottom_border.pack(fill="x", side="bottom")
 
+
         # ========== Guest ID ==========
         if self.guest_id:
             id_label = ctk.CTkLabel(self, text=f"Guest ID: {self.guest_id}", font=("Roboto Mono", 12, "bold"),
                                     text_color="#5c5c5c")
             id_label.pack()
+
 
         # ========== Form Frame ==========
         form_frame = ctk.CTkFrame(self, fg_color="transparent")

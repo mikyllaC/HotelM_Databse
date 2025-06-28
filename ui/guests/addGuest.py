@@ -42,11 +42,10 @@ class AddGuestFrame(ctk.CTkFrame):
         bottom_border = ctk.CTkFrame(header_frame, height=1, fg_color="#D3D3D3", border_width=1)
         bottom_border.pack(fill="x", side="bottom")
 
+
         # ========== Form Frame ==========
         form_frame = ctk.CTkFrame(self, fg_color="transparent")
         form_frame.pack(padx=40, pady=(50,20), fill="both", expand=True)
-        #form_frame.grid_columnconfigure(0, weight=1)  # Make both columns expand equally
-        #form_frame.grid_columnconfigure(1, weight=5)
 
         # ========== Name ==========
         name_label = ctk.CTkLabel(form_frame, text="Name *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
@@ -177,6 +176,8 @@ class AddGuestFrame(ctk.CTkFrame):
         status_dropdown.grid(row=5, column=1, sticky="w", padx=(0, 20), pady=10)
         self.entries["entry_status"] = status_dropdown
 
+
+        # ========== Button Frame ==========
         button_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
         button_frame.grid(row=6, column=1, pady=(50, 20), sticky="ew")
 

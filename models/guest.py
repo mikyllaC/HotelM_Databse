@@ -23,7 +23,7 @@ def main():
     guest_model.add_guest(sample_guest_data)
 
 
-class GuestModel():
+class GuestModel:
     def __init__(self):
         self.create_guest_table()
 
