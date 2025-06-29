@@ -72,15 +72,6 @@ class RoomModel:
                     AMENITY_ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     AMENITY_NAME TEXT NOT NULL UNIQUE
                 )""")
-            # # Mapping table to link ROOM and ROOM_AMENITY
-            # cursor.execute("""
-            #     CREATE TABLE IF NOT EXISTS ROOM_AMENITY_MAP (
-            #         ROOM_ID INTEGER NOT NULL,
-            #         AMENITY_ID INTEGER NOT NULL,
-            #         FOREIGN KEY (ROOM_ID) REFERENCES ROOM(ROOM_ID),
-            #         FOREIGN KEY (AMENITY_ID) REFERENCES ROOM_AMENITY(AMENITY_ID),
-            #         PRIMARY KEY (ROOM_ID, AMENITY_ID)
-            #     )""")
             # Mapping table to link ROOM_TYPE and ROOM_AMENITY
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS ROOM_TYPE_AMENITY_MAP (
@@ -211,6 +202,21 @@ class RoomModel:
             log(f"Retrieved {len(amenities)} amenities from the database.")
             return amenities
 
+    def get_room_by_id(self, room_id: int):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM ROOM WHERE ROOM_ID = ?", (room_id,))
+            room = cursor.fetchone()
+            if room:
+                # Get column names from cursor description
+                columns = [column[0] for column in cursor.description]
+                # Create a dictionary with column names as keys
+                room_dict = {columns[i]: room[i] for i in range(len(columns))}
+                return room_dict
+            else:
+                log(f"No room found with ID {room_id}.")
+                return None
+
 
     def get_room_type_by_id(self, room_type_id: int):
         with get_connection() as conn:
@@ -218,33 +224,35 @@ class RoomModel:
             cursor.execute("SELECT * FROM ROOM_TYPE WHERE ROOM_TYPE_ID = ?", (room_type_id,))
             room_type = cursor.fetchone()
             if room_type:
-                return {
-                    "ROOM_TYPE_ID": room_type[0],
-                    "TYPE_NAME": room_type[1],
-                    "BED_TYPE": room_type[2],
-                    "CAPACITY": room_type[3],
-                    "EXTRA_CAPACITY": room_type[4],
-                    "BASE_PRICE": room_type[5],
-                    "IMAGE": room_type[6],
-                    "DESCRIPTION": room_type[7]
-                }
+                # Get column names from cursor description
+                columns = [column[0] for column in cursor.description]
+                # Create a dictionary with column names as keys
+                room_type_dict = {columns[i]: room_type[i] for i in range(len(columns))}
+                return room_type_dict
             else:
                 log(f"No room type found with ID {room_type_id}.")
                 return None
 
+    def get_room_data_with_type(self, room_id: int):
+        """Fetch room data from the database including the room type name"""
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT r.*, rt.TYPE_NAME 
+                FROM ROOM r
+                JOIN ROOM_TYPE rt ON r.ROOM_TYPE_ID = rt.ROOM_TYPE_ID
+                WHERE r.ROOM_ID = ?
+            """, (room_id,))
+            room_data = cursor.fetchone()
 
-    # def get_amenities_for_room(self, room_id: int):
-    #     with get_connection() as conn:
-    #         cursor = conn.cursor()
-    #         cursor.execute("""
-    #             SELECT a.AMENITY_NAME
-    #             FROM ROOM_AMENITY a
-    #             JOIN ROOM_AMENITY_MAP m ON a.AMENITY_ID = m.AMENITY_ID
-    #             WHERE m.ROOM_ID = ?
-    #         """, (room_id,))
-    #         amenities = cursor.fetchall()
-    #         #log(f"Retrieved {len(amenities)} amenities for Room ID {room_id}.")
-    #         return [amenity[0] for amenity in amenities]
+            if room_data:
+                # Convert to dictionary
+                columns = [column[0] for column in cursor.description]
+                room_dict = {columns[i]: room_data[i] for i in range(len(columns))}
+                return room_dict
+            else:
+                log(f"No room found with ID {room_id}.")
+                return None
 
 
     def get_amenities_for_room_type(self, room_type_id: int):
@@ -258,6 +266,80 @@ class RoomModel:
             """, (room_type_id,))
             amenities = cursor.fetchall()
             return [amenity[0] for amenity in amenities]
+
+    def update_room(self, room_data: dict):
+        """Update a room's information in the database"""
+        log(f"[DEBUG] Attempting to update room with data: {room_data}")
+
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE ROOM SET 
+                    ROOM_NUMBER = ?, 
+                    ROOM_TYPE_ID = ?, 
+                    FLOOR = ?, 
+                    STATUS = ?, 
+                    NOTES = ? 
+                WHERE ROOM_ID = ?
+            """, (
+                room_data["ROOM_NUMBER"],
+                room_data["ROOM_TYPE_ID"],
+                room_data["FLOOR"],
+                room_data["STATUS"],
+                room_data["NOTES"],
+                room_data["ROOM_ID"]
+            ))
+            conn.commit()
+
+            log(f"Room updated successfully with ID: {room_data['ROOM_ID']}")
+            return True
+
+
+    def update_amenity(self, amenity_id: int, new_name: str):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("UPDATE ROOM_AMENITY SET AMENITY_NAME = ? WHERE AMENITY_ID = ?", (new_name, amenity_id))
+            conn.commit()
+            log(f"Amenity with ID {amenity_id} updated to '{new_name}' successfully.")
+
+
+    def delete_amenity(self, amenity_id: int):
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM ROOM_AMENITY WHERE AMENITY_ID = ?", (amenity_id,))
+            conn.commit()
+            log(f"Amenity with ID {amenity_id} deleted successfully.")
+
+    def get_room_types_for_amenity(self, amenity_id: int):
+        """Get all room types that use a specific amenity"""
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT rt.ROOM_TYPE_ID, rt.TYPE_NAME 
+                FROM ROOM_TYPE rt
+                JOIN ROOM_TYPE_AMENITY_MAP rtam ON rt.ROOM_TYPE_ID = rtam.ROOM_TYPE_ID
+                WHERE rtam.AMENITY_ID = ?
+            """, (amenity_id,))
+            room_types = cursor.fetchall()
+            return room_types
+
+    def get_amenity_by_id(self, amenity_id: int):
+        """Get details of a specific amenity by ID"""
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM ROOM_AMENITY WHERE AMENITY_ID = ?", (amenity_id,))
+            amenity = cursor.fetchone()
+
+            if amenity:
+                # Convert to dictionary
+                columns = [column[0] for column in cursor.description]
+                amenity_dict = {columns[i]: amenity[i] for i in range(len(columns))}
+                return amenity_dict
+            else:
+                log(f"No amenity found with ID {amenity_id}.")
+                return None
+
+
 
 
 if __name__ == "__main__":
