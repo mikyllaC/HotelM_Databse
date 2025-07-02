@@ -78,14 +78,14 @@ class RoomTypesTab(ctk.CTkFrame):
                   foreground=[('selected', "black")])
 
         self.treeview = ttk.Treeview(self.table_frame,
-                                    columns=["ID", "Type Name", "Bed Type", "Max Occupancy", "Base Rate", "Description"],
+                                    columns=["ID", "Type Name", "Bed Type", "Max Occupancy", "Description"],
                                     show="headings")
         self.treeview.pack(expand=True, fill="both", padx=0, pady=0)
         self.treeview.tag_configure('oddrow', background='#f5f5f5')
         self.treeview.tag_configure('evenrow', background='white')
 
         # Set the column headings and widths
-        headings = ["ID", "Type Name", "Bed Type", "Max Occupancy", "Base Rate", "Description"]
+        headings = ["ID", "Type Name", "Bed Type", "Max Occupancy", "Description"]
         for col in headings:
             self.treeview.heading(col, text=col, anchor="w")
             self.treeview.column(col, anchor="w", width=100, stretch=True)
@@ -95,7 +95,6 @@ class RoomTypesTab(ctk.CTkFrame):
         self.treeview.column("Type Name", width=150, anchor="w")
         self.treeview.column("Bed Type", width=100, anchor="w")
         self.treeview.column("Max Occupancy", width=120, anchor="w")
-        self.treeview.column("Base Rate", width=100, anchor="w")
         self.treeview.column("Description", width=400, anchor="w")
 
         # Bind selection event
@@ -116,7 +115,6 @@ class RoomTypesTab(ctk.CTkFrame):
                 room_type["TYPE_NAME"],
                 room_type["BED_TYPE"],
                 room_type["MAX_OCCUPANCY"],
-                f"${room_type['BASE_RATE']:.2f}",
                 room_type["DESCRIPTION"] if "DESCRIPTION" in room_type.keys() else "N/A"
             )
             tag = 'evenrow' if i % 2 == 0 else 'oddrow'
@@ -205,9 +203,6 @@ class RoomTypesTab(ctk.CTkFrame):
             ("Extra Adults", room_type.get("EXTRA_ADULT_NUM", 0)),
             ("Extra Children", room_type.get("EXTRA_CHILD_NUM", 0)),
             ("Max Occupancy", room_type["MAX_OCCUPANCY"]),
-            ("Base Rate", f"${room_type.get('BASE_RATE', 0):.2f}"),
-            ("Extra Adult Rate", f"${room_type.get('EXTRA_ADULT_RATE', 0):.2f}"),
-            ("Extra Child Rate", f"${room_type.get('EXTRA_CHILD_RATE', 0):.2f}"),
             ("Description", room_type.get("DESCRIPTION", "N/A")),
             ("Image", room_type.get("IMAGE", "None")),
             ("Amenities", amenities_str)
@@ -329,7 +324,6 @@ class RoomTypesTab(ctk.CTkFrame):
                 room_type["TYPE_NAME"],
                 room_type["BED_TYPE"],
                 room_type["MAX_OCCUPANCY"],
-                f"${room_type['BASE_RATE']:.2f}",
                 room_type["DESCRIPTION"] if "DESCRIPTION" in room_type.keys() else "N/A"
             )
             tag = 'evenrow' if i % 2 == 0 else 'oddrow'

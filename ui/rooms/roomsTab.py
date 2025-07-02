@@ -1,6 +1,6 @@
 import os
 import customtkinter as ctk
-from tkinter import ttk, StringVar
+from tkinter import ttk, StringVar, messagebox
 from PIL import Image, ImageTk
 
 from models.room import RoomModel
@@ -16,6 +16,7 @@ class RoomsTab(ctk.CTkFrame):
     TREE_FONT = ("Roboto Condensed", 11)
     TREE_SELECT_COLOR = "#DEECF7"
     BUTTON_COLOR = "#206AA1"
+    DELETE_COLOR = "#DC3545"
 
     def __init__(self, parent, main_page):
         super().__init__(parent)
@@ -25,13 +26,11 @@ class RoomsTab(ctk.CTkFrame):
 
         self.create_widgets()
 
-
     def create_widgets(self):
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.action_frame.pack(padx=(10, 0), pady=(20, 10), fill="x", anchor="n")
         self.action_frame.grid_columnconfigure(0, weight=1)  # filters/search expand
         self.action_frame.grid_columnconfigure(1, weight=0)  # add button stays its natural size
-
 
         # Filter and Search Frame
         self.filter_search_frame = ctk.CTkFrame(self.action_frame, corner_radius=10, fg_color="transparent")
@@ -42,42 +41,65 @@ class RoomsTab(ctk.CTkFrame):
         self.search_frame.pack(side="left", padx=(0, 10), pady=(0, 0), fill="y")
 
         self.search_var = StringVar()
-        self.search_var.trace_add("write", lambda name, index, mode: self.filter_rooms())
+        self.search_var.trace_add("write", lambda name, index, mode: self.apply_filters())
         self.search_label = ctk.CTkLabel(self.search_frame, text="Search:", font=("Roboto Condensed", 14))
         self.search_label.pack(side="left", padx=(0, 10), pady=(0, 0))
-        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search by Room Number",
+        self.search_entry = ctk.CTkEntry(self.search_frame, placeholder_text="Search by Room Number, Type, or Notes",
                                          font=("Roboto Condensed", 14), textvariable=self.search_var,
-                                         width=200, corner_radius=2, border_width=1, border_color= self.BORDER_COLOR,)
+                                         width=300, corner_radius=2, border_width=1, border_color=self.BORDER_COLOR)
         self.search_entry.pack(side="left", fill="x", expand=True, padx=(0, 10), pady=(0, 0))
 
-        # # Filter Label
-        # self.filter_frame = ctk.CTkFrame(self.filter_search_frame, fg_color="transparent")
-        # self.filter_frame.grid(column=1, row=0, padx=(0, 10), pady=(0, 0), sticky="ew")
-        #
-        # self.filter_label = ctk.CTkLabel(self.filter_frame, text="Filter by Status:",
-        #                                  font=("Roboto Condensed", 14))
-        # self.filter_label.grid(column=0, row=0, padx=(0, 10), pady=(0, 0))
-        #
-        # self.status_var = StringVar(value="All")
-        # self.status_combobox = ctk.CTkComboBox(self.filter_frame, variable=self.status_var,
-        #                                        values=["All", "Available", "Occupied", "Maintenance",
-        #                                                "Dirty", "Out of order"],
-        #                                        command=lambda x: self.treeview.selection_remove(
-        #                                            *self.treeview.get_children()))
-        # self.status_combobox.grid(column=1, row=0, padx=(0, 10), pady=(0, 0))
-        self.status_var = StringVar(value="All")
+        # Filter Frames
+        self.filter_frame = ctk.CTkFrame(self.filter_search_frame, fg_color="transparent")
+        self.filter_frame.pack(side="left", padx=(0, 10), pady=(0, 0), fill="y")
 
+        # Status Filter
+        self.status_label = ctk.CTkLabel(self.filter_frame, text="Status:", font=("Roboto Condensed", 14))
+        self.status_label.grid(row=0, column=0, padx=(0, 5), pady=(0, 0), sticky="w")
+
+        self.status_var = StringVar(value="All")
+        status_options = ["All"] + self.room_model.get_unique_statuses()
+        self.status_combobox = ctk.CTkComboBox(self.filter_frame, variable=self.status_var,
+                                               values=status_options, width=120,
+                                               command=lambda x: self.apply_filters())
+        self.status_combobox.grid(row=0, column=1, padx=(0, 10), pady=(0, 0))
+
+        # Floor Filter
+        self.floor_label = ctk.CTkLabel(self.filter_frame, text="Floor:", font=("Roboto Condensed", 14))
+        self.floor_label.grid(row=0, column=2, padx=(0, 5), pady=(0, 0), sticky="w")
+
+        self.floor_var = StringVar(value="All")
+        floor_options = ["All"] + self.room_model.get_unique_floors()
+        self.floor_combobox = ctk.CTkComboBox(self.filter_frame, variable=self.floor_var,
+                                              values=floor_options, width=80,
+                                              command=lambda x: self.apply_filters())
+        self.floor_combobox.grid(row=0, column=3, padx=(0, 10), pady=(0, 0))
+
+        # Room Type Filter
+        self.type_label = ctk.CTkLabel(self.filter_frame, text="Type:", font=("Roboto Condensed", 14))
+        self.type_label.grid(row=0, column=4, padx=(0, 5), pady=(0, 0), sticky="w")
+
+        self.type_var = StringVar(value="All")
+        type_options = ["All"] + self.room_model.get_unique_room_type_names()
+        self.type_combobox = ctk.CTkComboBox(self.filter_frame, variable=self.type_var,
+                                             values=type_options, width=150,
+                                             command=lambda x: self.apply_filters())
+        self.type_combobox.grid(row=0, column=5, padx=(0, 10), pady=(0, 0))
+
+        # Clear Filters Button
+        self.clear_button = ctk.CTkButton(self.filter_frame, text="Clear",
+                                          font=("Roboto Condensed", 12), width=60, height=25,
+                                          fg_color="gray", hover_color="darkgray",
+                                          command=self.clear_filters)
+        self.clear_button.grid(row=0, column=6, padx=(0, 10), pady=(0, 0))
 
         # Add Room Button
         self.add_icon = self.load_icon(icon_file="white_plus.png", size=14)
-
         self.add_room_button = ctk.CTkButton(self.action_frame,
                                              text="Add Room", font=("Roboto Condensed", 14, "bold"),
                                              fg_color=self.BUTTON_COLOR, width=30, height=25,
-                                             hover_color=None,
-                                             image=self.add_icon,
-                                             command=self.add_room_popup
-                                             )
+                                             hover_color=None, image=self.add_icon,
+                                             command=self.add_room_popup)
         self.add_room_button.grid(column=1, row=0, padx=(10, 10), pady=(0, 0), ipady=5, ipadx=5)
 
         # Table Frame
@@ -125,7 +147,6 @@ class RoomsTab(ctk.CTkFrame):
         # End Commands
         self.populate_treeview()
 
-
     def show_room_info(self, room_values):
         for widget in self.right_frame.winfo_children():
             widget.destroy()
@@ -143,19 +164,24 @@ class RoomsTab(ctk.CTkFrame):
         right_header_frame = ctk.CTkFrame(header_frame, fg_color=self.BG_COLOR_2)
         right_header_frame.grid(row=0, column=0, padx=(0, 10), pady=(10, 0), sticky="e")
 
-        # Edit and Exit Buttons
+        # Edit, Delete and Exit Buttons
         self.edit_button = ctk.CTkButton(right_header_frame, text="Edit", text_color="black", width=50, height=30,
                                          corner_radius=4, fg_color=self.BG_COLOR_2,
                                          border_width=1, border_color=self.BORDER_COLOR,
                                          command=lambda: self.edit_room_popup(room_values[1]))
         self.edit_button.grid(column=0, row=0, padx=(0, 5))
+
+        self.delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=60, height=30,
+                                           corner_radius=4, fg_color=self.DELETE_COLOR,
+                                           hover_color="#B02A3A",
+                                           command=lambda: self.delete_room_confirmation(room_values[1]))
+        self.delete_button.grid(column=1, row=0, padx=(0, 5))
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                     corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
                                     command=lambda: [self.right_frame.place_forget(),
-                                                     self.treeview.selection_remove(self.treeview.selection()),
-                                                     setattr(self, 'current_guest_index', None)],
+                                                     self.treeview.selection_remove(self.treeview.selection())],
                                     font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
-        exit_button.grid(column=1, row=0, padx=(5, 10))
+        exit_button.grid(column=2, row=0, padx=(5, 10))
 
         # Bottom Header Border
         bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
@@ -305,6 +331,8 @@ class RoomsTab(ctk.CTkFrame):
         # Get the search query and status filter
         search_query = self.search_var.get().lower().strip()
         status_filter = self.status_var.get()
+        floor_filter = self.floor_var.get()
+        type_filter = self.type_var.get()
 
         # Fetch all rooms from database
         rooms = self.room_model.get_all_rooms()
@@ -316,9 +344,21 @@ class RoomsTab(ctk.CTkFrame):
             if status_filter != "All" and room["STATUS"] != status_filter:
                 continue
 
-            # Skip if search query doesn't match consecutive characters in room number
+            # Skip if floor filter is applied and doesn't match
+            if floor_filter != "All" and str(room["FLOOR"]) != floor_filter:
+                continue
+
+            # Skip if type filter is applied and doesn't match
+            if type_filter != "All":
+                room_type = self.room_model.get_room_type_by_id(room["ROOM_TYPE_ID"])
+                room_type_name = room_type["TYPE_NAME"] if room_type else "Unknown"
+                if room_type_name != type_filter:
+                    continue
+
+            # Skip if search query doesn't match consecutive characters in room number, type, or notes
             room_number = str(room["ROOM_NUMBER"]).lower()
-            if search_query and search_query not in room_number:
+            notes = str(room["NOTES"]).lower() if room["NOTES"] else ""
+            if search_query and not (search_query in room_number or search_query in room_type_name or search_query in notes):
                 continue
 
             # Room passed all filters, add to the results
@@ -358,6 +398,81 @@ class RoomsTab(ctk.CTkFrame):
         frame = EditRoomFrame(parent_popup=popup, parent_page=self, room_id=room_id)
         frame.pack(fill="both", expand=True)
 
+    def apply_filters(self):
+        """Apply search and filter criteria using the enhanced search function"""
+        search_query = self.search_var.get()
+        status_filter = self.status_var.get()
+        floor_filter = self.floor_var.get()
+        type_filter = self.type_var.get()
+
+        # Clear the treeview
+        self.treeview.delete(*self.treeview.get_children())
+
+        # Use the enhanced search function from the model
+        filtered_rooms = self.room_model.search_rooms(
+            search_query=search_query,
+            status_filter=status_filter,
+            floor_filter=floor_filter,
+            room_type_filter=type_filter
+        )
+
+        # Populate the treeview with filtered results
+        for i, room in enumerate(filtered_rooms):
+            room_type_name = room.get("TYPE_NAME", "Unknown")
+            status = room["STATUS"]
+            notes = room["NOTES"] if room["NOTES"] else "N/A"
+
+            values = (room["ROOM_NUMBER"], room["ROOM_TYPE_ID"], room_type_name, room["FLOOR"], status, notes)
+            tag = 'evenrow' if i % 2 == 0 else 'oddrow'
+            self.treeview.insert("", "end", iid=room["ROOM_ID"], values=values, tags=(tag,))
+
+    def clear_filters(self):
+        """Clear all search and filter criteria"""
+        self.search_var.set("")
+        self.status_var.set("All")
+        self.floor_var.set("All")
+        self.type_var.set("All")
+        self.populate_treeview()
+
+    def refresh_filter_options(self):
+        """Refresh the filter dropdown options with current data"""
+        # Update status options
+        status_options = ["All"] + self.room_model.get_unique_statuses()
+        self.status_combobox.configure(values=status_options)
+
+        # Update floor options
+        floor_options = ["All"] + self.room_model.get_unique_floors()
+        self.floor_combobox.configure(values=floor_options)
+
+        # Update room type options
+        type_options = ["All"] + self.room_model.get_unique_room_type_names()
+        self.type_combobox.configure(values=type_options)
+
+    def delete_room_confirmation(self, room_id):
+        """Ask for confirmation before deleting a room"""
+        room = self.room_model.get_room_by_id(room_id)
+        if not room:
+            messagebox.showerror("Error", "Room not found!")
+            return
+
+        room_number = room["ROOM_NUMBER"]
+
+        # Show confirmation dialog
+        result = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to permanently delete room {room_number}?\n\nThis action cannot be undone!",
+            icon='warning'
+        )
+
+        if result:
+            success = self.room_model.hard_delete_room(room_id)
+            if success:
+                messagebox.showinfo("Success", f"Room {room_number} has been permanently deleted.")
+                self.populate_treeview()
+                self.refresh_filter_options()  # Refresh filter options after deletion
+                self.right_frame.place_forget()  # Hide the details panel
+            else:
+                messagebox.showerror("Error", f"Failed to delete room {room_number}. It may have active reservations or other dependencies.")
 
     def on_row_select(self, event):
         selected_item = self.treeview.selection()
@@ -401,3 +516,4 @@ class RoomsTab(ctk.CTkFrame):
         else:
             log(f"[Error]: {icon_file} not found at {path}!")
             return None
+

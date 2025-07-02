@@ -32,10 +32,8 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
         self.entries = {}
         self.required_fields = ["entry_type_name", "entry_bed_type", "entry_base_adults", "entry_extra_adults",
-                                "entry_max_occupancy", "entry_base_rate", "entry_extra_adult_charge",
-                                "entry_extra_child_charge"]
-        self.numeric_fields = ["entry_base_adults", "entry_extra_adults", "entry_max_occupancy",
-                               "entry_base_rate", "entry_extra_adult_charge", "entry_extra_child_charge"]
+                                "entry_max_occupancy"]
+        self.numeric_fields = ["entry_base_adults", "entry_extra_adults", "entry_max_occupancy"]
         self.bed_types = ["Single", "Double", "Queen", "King", "Twin"]
         self.image_path = None
         self.image_label = None
@@ -176,49 +174,6 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
         row = 0
 
-        # ========== Rate fields ==========
-        # Base Rate
-        label = ctk.CTkLabel(right_frame, text="Base Rate *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
-        label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        frame = ctk.CTkFrame(right_frame, fg_color="transparent")
-        frame.grid(row=row, column=1, sticky="w", padx=(0, 20), pady=(10, 0))
-        entry = ctk.CTkEntry(frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT, fg_color=self.BG_COLOR_2,
-                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR)
-        entry.grid(row=0, column=0, sticky="w")
-        label_entry = ctk.CTkLabel(frame, text="Default nightly rate", font=self.FONT_ENTRY_LABEL,
-                                   text_color=self.TEXT_COLOR_ENTRY)
-        label_entry.grid(row=1, column=0, sticky="nw")
-        self.entries["entry_base_rate"] = entry
-        row += 1
-
-        # Extra Adult Charge
-        label = ctk.CTkLabel(right_frame, text="Extra Adult Charge *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
-        label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        frame = ctk.CTkFrame(right_frame, fg_color="transparent")
-        frame.grid(row=row, column=1, sticky="w", padx=(0, 20), pady=(10, 0))
-        entry = ctk.CTkEntry(frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT, fg_color=self.BG_COLOR_2,
-                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR)
-        entry.grid(row=0, column=0, sticky="w")
-        label_entry = ctk.CTkLabel(frame, text="Additional charge per extra adult", font=self.FONT_ENTRY_LABEL,
-                                   text_color=self.TEXT_COLOR_ENTRY)
-        label_entry.grid(row=1, column=0, sticky="nw")
-        self.entries["entry_extra_adult_charge"] = entry
-        row += 1
-
-        # Extra Child Charge
-        label = ctk.CTkLabel(right_frame, text="Extra Child Charge *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
-        label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        frame = ctk.CTkFrame(right_frame, fg_color="transparent")
-        frame.grid(row=row, column=1, sticky="w", padx=(0, 20), pady=(10, 0))
-        entry = ctk.CTkEntry(frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT, fg_color=self.BG_COLOR_2,
-                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR)
-        entry.grid(row=0, column=0, sticky="w")
-        label_entry = ctk.CTkLabel(frame, text="Additional charge per extra child", font=self.FONT_ENTRY_LABEL,
-                                   text_color=self.TEXT_COLOR_ENTRY)
-        label_entry.grid(row=1, column=0, sticky="nw")
-        self.entries["entry_extra_child_charge"] = entry
-        row += 1
-
         # ========== Description ==========
         label = ctk.CTkLabel(right_frame, text="Description", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
         label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
@@ -253,6 +208,19 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             multiselect=True
         )
         row += 1
+
+        # ========== Rate Information Note ==========
+        note_frame = ctk.CTkFrame(right_frame, fg_color="#f0f8ff", corner_radius=8)
+        note_frame.grid(row=row, column=0, columnspan=2, sticky="ew", padx=self.PADX_LABEL, pady=20)
+
+        note_label = ctk.CTkLabel(note_frame,
+                                 text="Note: Room rates are managed separately in the Room Rates section.\n"
+                                      "After creating this room type, you can set up rates in the\n"
+                                      "Room Management → Room Rates tab.",
+                                 font=("Roboto", 12),
+                                 text_color="#1e40af",
+                                 justify="left")
+        note_label.pack(padx=15, pady=12)
 
 
         # ========== Button Frame ==========
@@ -360,15 +328,12 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             "EXTRA_CHILD_NUM": int(self.entries["entry_extra_children"].get().strip())
             if self.entries["entry_extra_children"].get().strip() else 0,
             "MAX_OCCUPANCY": int(self.entries["entry_max_occupancy"].get().strip()),
-            "BASE_RATE": float(self.entries["entry_base_rate"].get().strip()),
-            "EXTRA_ADULT_CHARGE": float(self.entries["entry_extra_adult_charge"].get().strip()),
-            "EXTRA_CHILD_CHARGE": float(self.entries["entry_extra_child_charge"].get().strip()),
             "DESCRIPTION": self.entries["entry_description"].get().strip(),
             "IMAGE": self.image_path,  # Only filename is stored
             "AMENITIES": self.amenity_dropdown.get()
         }
         try:
-            log(f"[DEBUG] Attempting to add room with data: {room_type_data}")
+            log(f"[DEBUG] Attempting to add room type with data: {room_type_data}")
             room_type_id = self.room_model.add_room_type(room_type_data)
             log(f"Room type added successfully with ID: {room_type_id}")
 
@@ -376,8 +341,15 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             if self.parent_page:
                 self.parent_page.refresh_room_types(selected_type=room_type_data["TYPE_NAME"])
 
-            # Show success message
-            messagebox.showinfo("Success", "Room type added successfully!")
+                # Mark related tabs for refresh if parent has room management page
+                if hasattr(self.parent_page, 'main_page') and hasattr(self.parent_page.main_page, 'mark_for_refresh'):
+                    # When adding a room type, mark rooms and amenities tabs for refresh
+                    self.parent_page.main_page.mark_for_refresh('rooms', 'amenities', 'room_rates')
+
+            # Show success message with note about setting up rates
+            messagebox.showinfo("Success",
+                              f"Room type '{room_type_data['TYPE_NAME']}' added successfully!\n\n"
+                              f"Note: Don't forget to set up room rates in the Room Management → Room Rates tab.")
 
             # Focus on parent after message is dismissed
             if self.parent_page and hasattr(self.parent_page.master, "lift"):

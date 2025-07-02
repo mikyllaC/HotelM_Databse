@@ -8,9 +8,12 @@ def clear_screen(widget):  # destroys all child widgets under the given widget/f
         widget.destroy()
 
 
-def log(message):
+def log(message, log_level=None):
     timestamp = datetime.now().strftime("%H:%M:%S")
-    print(f"[{timestamp}] {message}")
+    if log_level:
+        print(f"[{timestamp}] [{log_level}] {message}")
+    else:
+        print(f"[{timestamp}] {message}")
 
 
 def get_db_path():

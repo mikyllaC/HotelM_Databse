@@ -1,266 +1,568 @@
-from tkinter import ttk, messagebox
 import customtkinter as ctk
+from tkinter import ttk, messagebox
+from datetime import datetime
 
-# Notes ni Sofia
-# Sa may billing na GUI, may button na "View Invoice" eto dapat lalabas.
-# Up to lead dev yung pag lagay ng data here from database.
-# Invoice neto if possible, maging printable siya by saving it as PDF.
+from models.guest import GuestModel
+from models.reservation import ReservationModel
+from models.room import RoomModel
+from models.billing import BillingModel
+from models.hotel import HotelModel
+from utils.helpers import log
+
 
 class BillingInvoicePage(ctk.CTkFrame):
+    BG_COLOR_1 = "#F7F7F7"
+    BG_COLOR_2 = "white"
+    BORDER_COLOR = "#b5b5b5"
+    TITLE_COLOR = "#303644"
+
     def __init__(self, master=None, invoice_data=None, **kwargs):
         super().__init__(master, **kwargs)
+        self.configure(fg_color=self.BG_COLOR_2)
         self.pack(fill="both", expand=True)
+
         self.invoice_data = invoice_data
-        self.master.geometry("1200x850")
+        self.hotel_model = HotelModel()
+        self.guest_model = GuestModel()
+        self.reservation_model = ReservationModel()
+        self.room_model = RoomModel()
+        self.billing_model = BillingModel()
+
+        # Set window size
+        if master:
+            master.geometry("1000x800")
 
         self.create_widgets()
 
         if self.invoice_data:
             self.populate_invoice_fields(self.invoice_data)
 
-
     def create_widgets(self):
-        # Main Invoice Frame
-        self.invoice_frame = ctk.CTkFrame(self, fg_color="#ffffff", corner_radius=12)
-        self.invoice_frame.pack(fill="both", expand=True, padx=10, pady=10)
-
-        # Title
-        title_label = ctk.CTkLabel(
-            self.invoice_frame,
-            text="Invoice Details",
-            font=("Arial", 22, "bold"),
-            text_color="#222"
+        # Main Invoice Frame with padding - remove right padding to let scrollbar go to edge
+        self.invoice_frame = ctk.CTkScrollableFrame(
+            self,
+            fg_color=self.BG_COLOR_2,
+            corner_radius=0,
+            scrollbar_button_color="#E0E0E0",  # Make scrollbar less visible
+            scrollbar_button_hover_color="#C0C0C0"
         )
-        title_label.pack(anchor="center", pady=(10, 25))
+        self.invoice_frame.pack(fill="both", expand=True, padx=(20, 0), pady=20)  # Remove right padding
 
-        # Invoice Number Frame
-        invoice_number_frame = ctk.CTkFrame(self.invoice_frame, fg_color="transparent")
-        invoice_number_frame.pack(fill="x", padx=30, pady=(0, 18))
-        self.invoice_number_label = ctk.CTkLabel(
-            invoice_number_frame,
-            text="Invoice Number:",
-            font=("Arial", 15, "bold"),
-            text_color="#444",
-            anchor="w"
-        )
-        self.invoice_number_label.pack(anchor="w", padx=10, pady=2)
+        # Create inner content frame with proper padding
+        content_wrapper = ctk.CTkFrame(self.invoice_frame, fg_color=self.BG_COLOR_2, corner_radius=0)
+        content_wrapper.pack(fill="both", expand=True, padx=(0, 20))  # Add right padding here instead
 
-        # Guest and Booking Info Row
-        info_row = ctk.CTkFrame(self.invoice_frame, fg_color="transparent")
-        info_row.pack(fill="x", padx=20, pady=(0, 10))  # Increased padx
+        # Header Section
+        header_frame = ctk.CTkFrame(content_wrapper, fg_color="transparent")
+        header_frame.pack(fill="x", pady=(0, 20))
 
-        # Guest Info
-        guest_info = ctk.CTkFrame(info_row, fg_color="#f7f7f7", corner_radius=8)
-        guest_info.pack(side="left", fill="both", expand=True, padx=(0, 20), pady=5)
-        ctk.CTkLabel(guest_info,
-                     text="Guest Information",
-                     font=("Arial", 16, "bold"),
-                     text_color="#222").pack(anchor="w", padx=20, pady=(10, 5))
-        self.guest_name_label = ctk.CTkLabel(guest_info,
-                                             text="Guest Name:",
-                                             font=("Arial", 14),
-                                             text_color="#222")
-        self.guest_name_label.pack(anchor="w", padx=20, pady=2)
-        self.guest_id_label = ctk.CTkLabel(guest_info,
-                                           text="Guest ID:",
-                                           font=("Arial", 14),
-                                           text_color="#222")
-        self.guest_id_label.pack(anchor="w", padx=20, pady=2)
-        self.guest_email_label = ctk.CTkLabel(guest_info,
-                                              text="Email:",
-                                              font=("Arial", 14),
-                                              text_color="#222")
-        self.guest_email_label.pack(anchor="w", padx=20, pady=2)
-        self.guest_contact_label = ctk.CTkLabel(guest_info,
-                                                text="Contact Number:",
-                                                font=("Arial", 14),
-                                                text_color="#222")
-        self.guest_contact_label.pack(anchor="w", padx=20, pady=2)
+        # Hotel Information (Left side)
+        hotel_info_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        hotel_info_frame.pack(side="left", anchor="nw")
 
-        # Booking Info
-        booking_info = ctk.CTkFrame(info_row, fg_color="#f7f7f7", corner_radius=8)
-        booking_info.pack(side="left", fill="both", expand=True, padx=(20, 0), pady=5)
-        ctk.CTkLabel(booking_info,
-                     text="Booking Information",
-                     font=("Arial", 16, "bold"),
-                     text_color="#222").pack(anchor="w", padx=20, pady=(10, 5))
-        self.room_number_label = ctk.CTkLabel(booking_info,
-                                              text="Room Number:",
-                                              font=("Arial", 14),
-                                              text_color="#222")
-        self.room_number_label.pack(anchor="w", padx=20, pady=2)
-        self.checkin_label = ctk.CTkLabel(booking_info,
-                                          text="Check-in Date:",
-                                          font=("Arial", 14),
-                                          text_color="#222")
-        self.checkin_label.pack(anchor="w", padx=20, pady=2)
-        self.checkout_label = ctk.CTkLabel(booking_info,
-                                           text="Check-out Date:",
-                                           font=("Arial", 14),
-                                           text_color="#222")
-        self.checkout_label.pack(anchor="w", padx=20, pady=2)
+        # Get hotel information from database
+        try:
+            hotel_info = self.hotel_model.get_hotel_info(1)  # Assuming hotel ID 1 is the default
+            if hotel_info:
+                hotel_name = hotel_info.get('HOTEL_NAME', 'Reverie Hotel')
+                hotel_address = hotel_info.get('ADDRESS', '123 Main Street, City, Country')
+                hotel_phone = hotel_info.get('PHONE_NUMBER', '+1 234 567 8900')
+                hotel_email = hotel_info.get('EMAIL', 'reverie@hotel.com')
+            else:
+                # Fallback to default values if no hotel info found
+                hotel_name = 'GRAND HOTEL'
+                hotel_address = '123 Main Street, City, Country'
+                hotel_phone = '+1 234 567 8900'
+                hotel_email = 'billing@grandhotel.com'
+        except Exception as e:
+            log(f"Error getting hotel info: {str(e)}", "WARNING")
+            # Fallback to default values
+            hotel_name = 'GRAND HOTEL'
+            hotel_address = '123 Main Street, City, Country'
+            hotel_phone = '+1 234 567 8900'
+            hotel_email = 'billing@grandhotel.com'
+
+        ctk.CTkLabel(hotel_info_frame, text=hotel_name.upper(),
+                    font=("Roboto Condensed", 24, "bold"),
+                    text_color="#2563eb").pack(anchor="w")
+        ctk.CTkLabel(hotel_info_frame, text=hotel_address,
+                    font=("Roboto", 12), text_color="#666").pack(anchor="w")
+        ctk.CTkLabel(hotel_info_frame, text=f"Phone: {hotel_phone}",
+                    font=("Roboto", 12), text_color="#666").pack(anchor="w")
+        ctk.CTkLabel(hotel_info_frame, text=f"Email: {hotel_email}",
+                    font=("Roboto", 12), text_color="#666").pack(anchor="w")
+
+        # Invoice Title and Number (Right side)
+        invoice_header_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        invoice_header_frame.pack(side="right", anchor="ne")
+
+        ctk.CTkLabel(invoice_header_frame, text="INVOICE",
+                    font=("Roboto Condensed", 28, "bold"),
+                    text_color=self.TITLE_COLOR).pack(anchor="e")
+
+        self.invoice_number_label = ctk.CTkLabel(invoice_header_frame, text="Invoice #: INV0000",
+                                                font=("Roboto", 14, "bold"),
+                                                text_color="#666")
+        self.invoice_number_label.pack(anchor="e")
+
+        self.invoice_date_label = ctk.CTkLabel(invoice_header_frame,
+                                              text=f"Date: {datetime.now().strftime('%B %d, %Y')}",
+                                              font=("Roboto", 12), text_color="#666")
+        self.invoice_date_label.pack(anchor="e")
 
         # Divider
-        divider = ctk.CTkFrame(self.invoice_frame, fg_color="#e5e7eb", height=2)
-        divider.pack(fill="x", padx=20, pady=(10, 10))  # Increased padx
+        divider1 = ctk.CTkFrame(content_wrapper, fg_color="#e5e7eb", height=2)
+        divider1.pack(fill="x", pady=20)
 
-        # Payment Breakdown Table
-        payment_columns = ("Service Description", "Subtotal", "Tax", "Total")
+        # Guest and Booking Info Row
+        info_section = ctk.CTkFrame(content_wrapper, fg_color="transparent")
+        info_section.pack(fill="x", pady=(0, 20))
+
+        # Guest Information
+        guest_frame = ctk.CTkFrame(info_section, fg_color=self.BG_COLOR_1, corner_radius=8)
+        guest_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
+        ctk.CTkLabel(guest_frame, text="BILL TO:",
+                    font=("Roboto Condensed", 14, "bold"),
+                    text_color=self.TITLE_COLOR).pack(anchor="nw", padx=15, pady=(15, 5))
+
+        self.guest_name_label = ctk.CTkLabel(guest_frame, text="Guest Name: -",
+                                           font=("Roboto", 12, "bold"),
+                                           text_color="#333", anchor="w")
+        self.guest_name_label.pack(anchor="nw", padx=15, pady=2)
+
+        self.guest_email_label = ctk.CTkLabel(guest_frame, text="Email: -",
+                                            font=("Roboto", 11),
+                                            text_color="#666", anchor="w")
+        self.guest_email_label.pack(anchor="nw", padx=15, pady=1)
+
+        self.guest_contact_label = ctk.CTkLabel(guest_frame, text="Contact: -",
+                                              font=("Roboto", 11),
+                                              text_color="#666", anchor="w")
+        self.guest_contact_label.pack(anchor="nw", padx=15, pady=(1, 15))
+
+        # Booking Information
+        booking_frame = ctk.CTkFrame(info_section, fg_color=self.BG_COLOR_1, corner_radius=8)
+        booking_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
+
+        ctk.CTkLabel(booking_frame, text="BOOKING DETAILS:",
+                    font=("Roboto Condensed", 14, "bold"),
+                    text_color=self.TITLE_COLOR).pack(anchor="nw", padx=15, pady=(15, 5))
+
+        self.reservation_id_label = ctk.CTkLabel(booking_frame, text="Reservation: -",
+                                               font=("Roboto", 12, "bold"),
+                                               text_color="#333", anchor="w")
+        self.reservation_id_label.pack(anchor="nw", padx=15, pady=2)
+
+        self.room_info_label = ctk.CTkLabel(booking_frame, text="Room: -",
+                                          font=("Roboto", 11),
+                                          text_color="#666", anchor="w")
+        self.room_info_label.pack(anchor="nw", padx=15, pady=1)
+
+        self.dates_label = ctk.CTkLabel(booking_frame, text="Dates: -",
+                                      font=("Roboto", 11),
+                                      text_color="#666", anchor="w")
+        self.dates_label.pack(anchor="nw", padx=15, pady=1)
+
+        self.nights_label = ctk.CTkLabel(booking_frame, text="Nights: -",
+                                       font=("Roboto", 11),
+                                       text_color="#666", anchor="w")
+        self.nights_label.pack(anchor="nw", padx=15, pady=(1, 15))
+
+        # Services Table
+        services_frame = ctk.CTkFrame(content_wrapper, fg_color="transparent")
+        services_frame.pack(fill="x", pady=(0, 20))
+
+        ctk.CTkLabel(services_frame, text="SERVICES & CHARGES",
+                    font=("Roboto Condensed", 16, "bold"),
+                    text_color=self.TITLE_COLOR).pack(anchor="w", pady=(0, 10))
+
+        # Create treeview for services
+        columns = ("Description", "Qty", "Amount")
+
         style = ttk.Style()
-        style.configure("Invoice.Treeview.Heading", font=("Arial", 13, "bold"), foreground="#444")
-        style.configure("Invoice.Treeview", font=("Courier", 12), rowheight=26)
-        self.payment_tree = ttk.Treeview(self.invoice_frame,
-                                         columns=payment_columns,
-                                         show="headings", height=7,
-                                         style="Invoice.Treeview"
-                                         )
-        for col in payment_columns:
-            self.payment_tree.heading(col, text=col)
-            self.payment_tree.column(col, width=200, anchor="w")  # Increased width
-        self.payment_tree.pack(padx=20, pady=10, fill="x")  # Increased padx
-        # Alternate row colors
-        self.payment_tree.tag_configure('oddrow', background='#fafafa')
-        self.payment_tree.tag_configure('evenrow', background='#f0f0f0')
+        style.configure("Invoice.Treeview.Heading",
+                       font=("Roboto Condensed", 12, "bold"),
+                       foreground="#333")
+        style.configure("Invoice.Treeview",
+                       font=("Roboto", 11),
+                       rowheight=30)
 
-        # Billing Summary Frame
-        billing_summary_frame = ctk.CTkFrame(self.invoice_frame, fg_color="#f7f7f7", corner_radius=8)
-        billing_summary_frame.pack(fill="x", padx=20, pady=(0, 20))  # Increased padx
-        # Subtotal
-        subtotal_label = ctk.CTkLabel(
-            billing_summary_frame,
-            text="Subtotal:",
-            font=("Arial", 15),
-            anchor="e",
-            width=200,
-            text_color="#222"
-        )
-        subtotal_label.grid(row=0, column=0, sticky="e", padx=(0, 10), pady=2)
-        subtotal_value = ctk.CTkLabel(
-            billing_summary_frame,
-            text="₱0.00",
-            font=("Arial", 15),
-            anchor="w",
-            text_color="#222"
-        )
-        subtotal_value.grid(row=0, column=1, sticky="w", padx=(0, 30), pady=2)
-        # Tax
-        tax_label = ctk.CTkLabel(
-            billing_summary_frame,
-            text="Tax:",
-            font=("Arial", 15),
-            anchor="e",
-            width=200,
-            text_color="#222"
-        )
-        tax_label.grid(row=1, column=0, sticky="e", padx=(0, 10), pady=2)
-        tax_value = ctk.CTkLabel(
-            billing_summary_frame,
-            text="₱0.00",
-            font=("Arial", 15),
-            anchor="w",
-            text_color="#222"
-        )
-        tax_value.grid(row=1, column=1, sticky="w", padx=(0, 30), pady=2)
-        # Grand Total
-        total_label = ctk.CTkLabel(
-            billing_summary_frame,
-            text="Grand Total:",
-            font=("Arial", 16, "bold"),
-            anchor="e",
-            width=200,
-            text_color="#111"
-        )
-        total_label.grid(row=2, column=0, sticky="e", padx=(0, 10), pady=2)
-        total_value = ctk.CTkLabel(
-            billing_summary_frame,
-            text="₱0.00",
-            font=("Arial", 16, "bold"),
-            anchor="w",
-            text_color="#111"
-        )
-        total_value.grid(row=2, column=1, sticky="w", padx=(0, 30), pady=2)
-        # Payment Status
-        payment_status_label = ctk.CTkLabel(
-            billing_summary_frame,
-            text="Payment Status:",
-            font=("Arial", 15),
-            anchor="e",
-            width=200,
-            text_color="#222"
-        )
-        payment_status_label.grid(row=3, column=0, sticky="e", padx=(0, 10), pady=2)
-        payment_status_value = ctk.CTkLabel(
-            billing_summary_frame,
-            text="Unpaid",
-            font=("Arial", 15),
-            anchor="w",
-            text_color="#D32F2F"
-        )
-        payment_status_value.grid(row=3, column=1, sticky="w", padx=(0, 30), pady=2)
+        self.services_tree = ttk.Treeview(services_frame,
+                                         columns=columns,
+                                         show="headings",
+                                         height=6,
+                                         style="Invoice.Treeview")
+
+        # Configure columns
+        self.services_tree.heading("Description", text="Description", anchor="w")
+        self.services_tree.heading("Qty", text="Qty", anchor="center")
+        self.services_tree.heading("Amount", text="Amount", anchor="e")
+
+        self.services_tree.column("Description", width=400, anchor="w")
+        self.services_tree.column("Qty", width=80, anchor="center")
+        self.services_tree.column("Amount", width=150, anchor="e")
+
+        self.services_tree.pack(fill="x", pady=(0, 10))
+
+        # Configure row colors
+        self.services_tree.tag_configure('oddrow', background='#f8f9fa')
+        self.services_tree.tag_configure('evenrow', background='white')
+
+        # Summary Section
+        summary_container = ctk.CTkFrame(content_wrapper, fg_color="transparent")
+        summary_container.pack(fill="x", pady=(10, 20))
+
+        # Empty space on left
+        ctk.CTkFrame(summary_container, fg_color="transparent", width=400).pack(side="left")
+
+        # Summary on right
+        summary_frame = ctk.CTkFrame(summary_container, fg_color=self.BG_COLOR_1, corner_radius=8)
+        summary_frame.pack(side="right", padx=(20, 0))
+
+        # Summary content
+        summary_content = ctk.CTkFrame(summary_frame, fg_color="transparent")
+        summary_content.pack(padx=20, pady=15)
+
+        # Summary rows
+        self.subtotal_label = ctk.CTkLabel(summary_content, text="Subtotal: ₱0.00",
+                                         font=("Roboto", 12), text_color="#666")
+        self.subtotal_label.grid(row=0, column=0, sticky="e", padx=(0, 40), pady=2)
+
+        self.tax_label = ctk.CTkLabel(summary_content, text="Tax (12%): ₱0.00",
+                                    font=("Roboto", 12), text_color="#666")
+        self.tax_label.grid(row=1, column=0, sticky="e", padx=(0, 40), pady=2)
+
+        # Divider in summary
+        summary_divider = ctk.CTkFrame(summary_content, fg_color="#ccc", height=1)
+        summary_divider.grid(row=2, column=0, sticky="ew", padx=(0, 40), pady=(5, 5))
+
+        self.total_label = ctk.CTkLabel(summary_content, text="TOTAL: ₱0.00",
+                                      font=("Roboto", 14, "bold"), text_color="#333")
+        self.total_label.grid(row=3, column=0, sticky="e", padx=(0, 40), pady=2)
+
+        self.payment_status_label = ctk.CTkLabel(summary_content, text="Status: Pending",
+                                               font=("Roboto", 12, "bold"), text_color="#dc3545")
+        self.payment_status_label.grid(row=4, column=0, sticky="e", padx=(0, 40), pady=(5, 0))
+
+        # Payment Information (if paid)
+        self.payment_info_frame = ctk.CTkFrame(content_wrapper, fg_color=self.BG_COLOR_1, corner_radius=8)
+        self.payment_method_label = ctk.CTkLabel(self.payment_info_frame, text="Payment Method: -",
+                                               font=("Roboto", 11), text_color="#666")
+        self.payment_date_label = ctk.CTkLabel(self.payment_info_frame, text="Payment Date: -",
+                                             font=("Roboto", 11), text_color="#666")
+
+        # Footer
+        footer_frame = ctk.CTkFrame(content_wrapper, fg_color="transparent")
+        footer_frame.pack(fill="x", pady=(20, 0))
 
         # Notes
-        notes_label = ctk.CTkLabel(
-            self.invoice_frame,
-            text="Note: Thank you for staying with us! Please settle your bill at the front desk.",
-            font=("Arial", 13, "italic"),
-            anchor="w",
-            text_color="#616161"
-        )
-        notes_label.pack(anchor="w", padx=20, pady=(0, 10))  # Increased padx
+        notes_frame = ctk.CTkFrame(footer_frame, fg_color=self.BG_COLOR_1, corner_radius=8)
+        notes_frame.pack(fill="x", pady=(0, 15))
 
-        # Buttons Frame
-        buttons_frame = ctk.CTkFrame(self.invoice_frame, fg_color="transparent")
-        buttons_frame.pack(fill="x", padx=20, pady=(0, 20))  # Increased padx
-        download_button = ctk.CTkButton(
-            buttons_frame,
-            text="Download Invoice",
-            width=170,
-            height=40,
-            font=("Arial", 14, "bold"),
-            text_color="white",
-            fg_color="#2563eb",
-            hover_color="#1d4ed8"
-        )
-        download_button.pack(side="right")
-        print_button = ctk.CTkButton(
-            buttons_frame,
-            text="Cancel",
-            width=150,
-            height=40,
-            fg_color="#B0B0B0",
-            font=("Arial", 14, "bold"),
-            text_color="white"
-        )
-        print_button.pack(side="right", padx=(20, 10))
-        # Pop up message if download button is clicked
-        def download_invoice():
-            messagebox.showinfo("Download Invoice", "Invoice has been downloaded successfully.")
+        ctk.CTkLabel(notes_frame, text="NOTES:",
+                    font=("Roboto Condensed", 12, "bold"),
+                    text_color=self.TITLE_COLOR).pack(anchor="w", padx=15, pady=(10, 5))
 
-        download_button.configure(command=download_invoice)
+        ctk.CTkLabel(notes_frame,
+                    text="Thank you for choosing Grand Hotel. We hope you enjoyed your stay!",
+                    font=("Roboto", 11, "italic"),
+                    text_color="#666", wraplength=700).pack(anchor="w", padx=15, pady=(0, 10))
 
+        # Action Buttons
+        button_frame = ctk.CTkFrame(footer_frame, fg_color="transparent")
+        button_frame.pack(fill="x")
 
-    def populate_invoice_fields(self, data):
-        # data: (invoice_no, guest_name, room_type, nights, amount, status)
-        invoice_no, guest_name, room_type, nights, amount, status = data
-        self.invoice_number_label.configure(text=f"Invoice Number: {invoice_no}")
-        self.guest_name_label.configure(text=f"Guest Name: {guest_name}")
-        self.guest_id_label.configure(text=f"Guest ID: -")
-        self.guest_email_label.configure(text=f"Email: -")
-        self.guest_contact_label.configure(text=f"Contact Number: -")
-        self.room_number_label.configure(text=f"Room Number: {room_type}")
-        self.checkin_label.configure(text=f"Check-in Date: -")
-        self.checkout_label.configure(text=f"Check-out Date: -")
-        # Optionally, fill payment_tree and summary if you have more data
+        # Print/Download button
+        self.download_button = ctk.CTkButton(button_frame, text="Download PDF",
+                                           font=("Roboto Condensed", 14, "bold"),
+                                           width=150, height=40,
+                                           fg_color="#2563eb", hover_color="#1d4ed8",
+                                           command=self.download_invoice)
+        self.download_button.pack(side="right", padx=(10, 0))
+
+        # Print button
+        self.print_button = ctk.CTkButton(button_frame, text="Print Invoice",
+                                        font=("Roboto Condensed", 14, "bold"),
+                                        width=150, height=40,
+                                        fg_color="#28a745", hover_color="#218838",
+                                        command=self.print_invoice)
+        self.print_button.pack(side="right", padx=(10, 0))
+
+        # Close button
+        self.close_button = ctk.CTkButton(button_frame, text="Close",
+                                        font=("Roboto Condensed", 14, "bold"),
+                                        width=100, height=40,
+                                        fg_color="#6c757d", hover_color="#545b62",
+                                        command=self.close_window)
+        self.close_button.pack(side="right")
+
+    def populate_invoice_fields(self, billing_data):
+        """Populate invoice with billing data from the billing page"""
+        try:
+            # billing_data format: (invoice_id, reservation_id, guest_name, room_number, check_in, check_out, amount, payment_status)
+            invoice_id_display, reservation_id_str, guest_name, room_number, check_in, check_out, amount_str, payment_status = billing_data
+
+            # Update header information
+            self.invoice_number_label.configure(text=f"Invoice #: {invoice_id_display}")
+
+            # Get reservation ID as integer
+            reservation_id = int(reservation_id_str[1:]) if reservation_id_str.startswith("R") else None
+
+            if not reservation_id:
+                messagebox.showerror("Error", "Invalid reservation ID format.")
+                return
+
+            # Get detailed invoice information from billing model
+            detailed_invoice = self.billing_model.get_invoice_by_reservation(reservation_id)
+
+            if detailed_invoice:
+                # Use detailed invoice data
+                self.populate_detailed_invoice(detailed_invoice, billing_data)
+            else:
+                # Fallback to basic information
+                self.populate_basic_invoice(reservation_id, billing_data)
+
+        except Exception as e:
+            log(f"Error populating invoice: {str(e)}", "ERROR")
+            messagebox.showerror("Error", f"Could not load invoice details: {str(e)}")
+
+    def populate_detailed_invoice(self, detailed_invoice, billing_data):
+        """Populate invoice using detailed billing model data"""
+        try:
+            reservation_id = detailed_invoice['RESERVATION_ID']
+
+            # Get guest details
+            guest_id = detailed_invoice['GUEST_ID']
+            guest = self.guest_model.get_guest_by_id(guest_id)
+            if guest:
+                self.guest_name_label.configure(text=f"Guest: {guest.get('FIRST_NAME', '')} {guest.get('LAST_NAME', '')}")
+                self.guest_email_label.configure(text=f"Email: {guest.get('EMAIL', 'N/A')}")
+                self.guest_contact_label.configure(text=f"Contact: {guest.get('CONTACT_NUMBER', 'N/A')}")
+
+            # Get room details
+            room_id = detailed_invoice['ROOM_ID']
+            room_data = self.room_model.get_room_data_with_type(room_id)
+            if room_data:
+                room_type = room_data.get('TYPE_NAME', 'Standard')
+                room_number = room_data.get('ROOM_NUMBER', 'N/A')
+                self.room_info_label.configure(text=f"Room: {room_number} ({room_type})")
+
+            # Set booking details
+            self.reservation_id_label.configure(text=f"Reservation: R{reservation_id}")
+            self.dates_label.configure(text=f"Dates: {detailed_invoice['CHECK_IN_DATE']} to {detailed_invoice['CHECK_OUT_DATE']}")
+
+            # Calculate nights
+            try:
+                check_in_date = datetime.strptime(detailed_invoice['CHECK_IN_DATE'], "%Y-%m-%d")
+                check_out_date = datetime.strptime(detailed_invoice['CHECK_OUT_DATE'], "%Y-%m-%d")
+                nights = (check_out_date - check_in_date).days
+                self.nights_label.configure(text=f"Nights: {nights}")
+            except:
+                nights = 1
+                self.nights_label.configure(text="Nights: 1")
+
+            # Populate services table with detailed items
+            self.populate_detailed_services_table(detailed_invoice)
+
+            # Update payment status and payment info
+            self.update_payment_status_detailed(detailed_invoice)
+
+        except Exception as e:
+            log(f"Error populating detailed invoice: {str(e)}", "ERROR")
+            # Fallback to basic population
+            self.populate_basic_invoice(detailed_invoice['RESERVATION_ID'], billing_data)
+
+    def populate_basic_invoice(self, reservation_id, billing_data):
+        """Fallback method using basic reservation data"""
+        try:
+            reservation = self.reservation_model.get_reservation_by_id(reservation_id)
+            if reservation:
+                guest_id = reservation.get("GUEST_ID")
+                room_id = reservation.get("ROOM_ID")
+
+                # Get guest details
+                guest = self.guest_model.get_guest_by_id(guest_id)
+                if guest:
+                    self.guest_name_label.configure(text=f"Guest: {guest.get('FIRST_NAME', '')} {guest.get('LAST_NAME', '')}")
+                    self.guest_email_label.configure(text=f"Email: {guest.get('EMAIL', 'N/A')}")
+                    self.guest_contact_label.configure(text=f"Contact: {guest.get('CONTACT_NUMBER', 'N/A')}")
+
+                # Get room details
+                room_data = self.room_model.get_room_data_with_type(room_id)
+                if room_data:
+                    room_type = room_data.get('TYPE_NAME', 'Standard')
+                    self.room_info_label.configure(text=f"Room: {billing_data[3]} ({room_type})")
+
+                # Set booking details
+                self.reservation_id_label.configure(text=f"Reservation: R{reservation_id}")
+                self.dates_label.configure(text=f"Dates: {billing_data[4]} to {billing_data[5]}")
+
+                # Calculate nights
+                try:
+                    check_in_date = datetime.strptime(billing_data[4], "%Y-%m-%d")
+                    check_out_date = datetime.strptime(billing_data[5], "%Y-%m-%d")
+                    nights = (check_out_date - check_in_date).days
+                    self.nights_label.configure(text=f"Nights: {nights}")
+                except:
+                    nights = 1
+                    self.nights_label.configure(text="Nights: 1")
+
+            # Populate services table with basic calculation
+            self.populate_basic_services_table(billing_data, nights if 'nights' in locals() else 1)
+
+            # Update payment status
+            self.update_payment_status(billing_data[7])
+
+        except Exception as e:
+            log(f"Error populating basic invoice: {str(e)}", "ERROR")
+
+    def populate_detailed_services_table(self, detailed_invoice):
+        """Populate the services table with detailed billing items"""
+        # Clear existing items
+        for item in self.services_tree.get_children():
+            self.services_tree.delete(item)
+
+        try:
+            # Get detailed charge breakdown from billing model
+            reservation_id = detailed_invoice['RESERVATION_ID']
+            charge_breakdown = self.billing_model.get_detailed_charge_breakdown(reservation_id)
+
+            if charge_breakdown and charge_breakdown.get('line_items'):
+                # Use the detailed breakdown
+                line_items = charge_breakdown['line_items']
+
+                for i, item in enumerate(line_items):
+                    tag = 'evenrow' if i % 2 == 0 else 'oddrow'
+                    self.services_tree.insert("", "end",
+                                            values=(
+                                                item['description'],
+                                                item['quantity'],
+                                                f"₱{float(item['total_price']):.2f}"
+                                            ),
+                                            tags=(tag,))
+
+                # Calculate totals correctly including service charge in subtotal
+                subtotal = sum(float(item['total_price']) for item in line_items)
+
+                # Calculate tax on the full subtotal (including service charges)
+                tax_rate = float(detailed_invoice.get('TAX_RATE', 0.12))
+                tax_amount = subtotal * tax_rate
+                total_amount = subtotal + tax_amount
+
+                # Update summary
+                self.subtotal_label.configure(text=f"Subtotal: ₱{subtotal:.2f}")
+                self.tax_label.configure(text=f"Tax ({tax_rate*100:.0f}%): ₱{tax_amount:.2f}")
+                self.total_label.configure(text=f"TOTAL: ₱{total_amount:.2f}")
+
+            else:
+                # Fallback to basic calculation if detailed breakdown fails
+                self._populate_basic_services_fallback(detailed_invoice)
+
+        except Exception as e:
+            log(f"Error populating detailed services table: {str(e)}", "ERROR")
+            # Fallback to basic calculation
+            self._populate_basic_services_fallback(detailed_invoice)
+
+    def _populate_basic_services_fallback(self, detailed_invoice):
+        """Fallback method for populating services when detailed breakdown fails"""
+        try:
+            # Calculate nights
+            check_in_date = datetime.strptime(detailed_invoice['CHECK_IN_DATE'], "%Y-%m-%d")
+            check_out_date = datetime.strptime(detailed_invoice['CHECK_OUT_DATE'], "%Y-%m-%d")
+            nights = (check_out_date - check_in_date).days
+            if nights <= 0:
+                nights = 1
+
+            # Get room details
+            room_id = detailed_invoice['ROOM_ID']
+            room_data = self.room_model.get_room_data_with_type(room_id)
+
+            if room_data:
+                room_number = room_data.get('ROOM_NUMBER', 'N/A')
+                room_type = room_data.get('TYPE_NAME', 'Standard Room')
+
+                # Calculate base rate from subtotal
+                subtotal = float(detailed_invoice['SUBTOTAL'])
+                base_rate = subtotal / nights
+
+                # Add basic room accommodation row
+                self.services_tree.insert("", "end",
+                                        values=(
+                                            f"Room Accommodation - {room_number} ({room_type})",
+                                            nights,
+                                            f"₱{subtotal:.2f}"
+                                        ),
+                                        tags=('evenrow',))
+
+            # Update summary with actual invoice totals
+            subtotal = float(detailed_invoice['SUBTOTAL'])
+            tax_amount = float(detailed_invoice['TAX_AMOUNT'])
+            total_amount = float(detailed_invoice['TOTAL_AMOUNT'])
+
+            self.subtotal_label.configure(text=f"Subtotal: ₱{subtotal:.2f}")
+            self.tax_label.configure(text=f"Tax ({detailed_invoice['TAX_RATE']*100:.0f}%): ₱{tax_amount:.2f}")
+            self.total_label.configure(text=f"TOTAL: ₱{total_amount:.2f}")
+
+        except Exception as e:
+            log(f"Error in fallback services population: {str(e)}", "ERROR")
+
+    def update_payment_status_detailed(self, detailed_invoice):
+        """Update payment status using detailed invoice data"""
+        try:
+            payment_status = detailed_invoice['STATUS']
+            status_colors = {
+                "Paid": "#28a745",
+                "Pending": "#ffc107",
+                "Partial": "#fd7e14",
+                "Overdue": "#dc3545",
+                "Cancelled": "#6c757d"
+            }
+
+            color = status_colors.get(payment_status, "#6c757d")
+            self.payment_status_label.configure(text=f"Status: {payment_status}", text_color=color)
+
+            # Show payment info if there are payments
+            payments = detailed_invoice.get('PAYMENTS', [])
+            if payments:
+                self.payment_info_frame.pack(fill="x", pady=(0, 15))
+                self.payment_method_label.pack(anchor="w", padx=15, pady=(10, 2))
+                self.payment_date_label.pack(anchor="w", padx=15, pady=(0, 10))
+
+                # Show latest payment info
+                latest_payment = payments[-1]  # Get most recent payment
+                self.payment_method_label.configure(text=f"Payment Method: {latest_payment['PAYMENT_METHOD']}")
+                self.payment_date_label.configure(text=f"Payment Date: {latest_payment['PAYMENT_DATE']}")
+
+        except Exception as e:
+            log(f"Error updating detailed payment status: {str(e)}", "ERROR")
+            # Fallback to basic status update
+            self.update_payment_status(detailed_invoice.get('STATUS', 'Pending'))
+
+    def download_invoice(self):
+        """Download invoice as PDF"""
+        messagebox.showinfo("Download", "Invoice download functionality will be implemented.")
+
+    def print_invoice(self):
+        """Print the invoice"""
+        messagebox.showinfo("Print", "Invoice print functionality will be implemented.")
+
+    def close_window(self):
+        """Close the invoice window"""
+        if self.master:
+            self.master.destroy()
 
 
 # For standalone testing
 if __name__ == "__main__":
     root = ctk.CTk()
-    root.title("Billing Invoice Page")
-    root.geometry("1400x900")
+    root.title("Invoice")
 
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")
 
-    BillingInvoicePage(master=root)
+    # Sample data for testing
+    sample_data = ("INV0001", "R1", "John Doe", "101", "2024-01-15", "2024-01-18", "₱450.00", "Paid")
+
+    invoice_page = BillingInvoicePage(master=root, invoice_data=sample_data)
     root.mainloop()

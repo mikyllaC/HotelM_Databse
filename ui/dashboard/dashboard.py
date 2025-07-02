@@ -3,7 +3,7 @@ import customtkinter as ctk                 # customtkinter
 import os
 from PIL import Image
 
-from ui.home.homeScreenPage import HomeScreenPage
+# from ui.home.homeScreenPage import HomeScreenPage
 from ui.rooms.roomManagementPage import RoomManagementPage
 from ui.guests.guestListPage import GuestListPage
 from ui.reservations.reservationsPage import ReservationsPage
@@ -22,11 +22,10 @@ class Dashboard(ctk.CTkFrame):
     def __init__(self, parent):
         super().__init__(parent)
 
-        self.pages = {"Home": HomeScreenPage,
-                      "Rooms": RoomManagementPage,
+        self.pages = {"Rooms": RoomManagementPage,
                       "Guests": GuestListPage,
                       "Reservations": ReservationsPage,
-                      "Billing & Payment": BillingPaymentPage,
+                      "Billing and Payment": BillingPaymentPage,
                       "Staff and Maintenance": StaffMaintenancePage,
                       "Settings": SettingsPage
                       }
@@ -41,11 +40,10 @@ class Dashboard(ctk.CTkFrame):
     # ============== Loads Icons ==============
     def load_icons(self):
         icon_files = {
-            "Home": "home.png",
             "Rooms": "room.png",
             "Guests": "guest.png",
             "Reservations": "reservations.png",
-            "Billing & Payment": "billing.png",
+            "Billing and Payment": "billing.png",
             "Staff and Maintenance": "staff.png",
             "Settings": "settings.png",
         }
@@ -95,8 +93,8 @@ class Dashboard(ctk.CTkFrame):
             self.buttons[page_name] = btn
 
         # ---- Select Default Page ----
-        self.highlight_button("Home")
-        self.select_page("Home")
+        self.highlight_button("Rooms")
+        self.select_page("Rooms")
 
 
     # ============== Page Selection ==============

@@ -34,17 +34,6 @@ class GuestListPage(ctk.CTkFrame):
         self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.action_frame.pack(anchor="n", padx=(35, 0), fill="x")
 
-        # Create Reservation Button
-        create_reservation_button = ctk.CTkButton(
-            self.action_frame,
-            text="Create Reservation",
-            font=("Arial", 16, "bold"),
-            width=180,
-            height=36,
-            command=self.create_reservation_popup
-        )
-        create_reservation_button.pack(side="left", padx=(0, 10))
-
         # Add Guest Button
         add_guest_button = ctk.CTkButton(
             self.action_frame,
@@ -340,22 +329,6 @@ class GuestListPage(ctk.CTkFrame):
                 self.show_guest_info(guest_info)
         else:
             self.right_frame.place_forget()
-
-
-    def create_reservation_popup(self):
-        selected_item = self.treeview.selection()
-        guest_info = None
-
-        if selected_item:
-            guest_info = self.treeview.item(selected_item[0], "values")
-
-        popup = ctk.CTkToplevel(self)
-        popup.title("Create Reservation")
-        popup.geometry("1600x800")
-        popup.grab_set()
-
-        frame = CreateReservation(popup, guest_info)
-        frame.pack(fill="both", expand=True)
 
 
     def add_guest_popup(self):

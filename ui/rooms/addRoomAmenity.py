@@ -38,7 +38,7 @@ class AddRoomAmenityFrame(ctk.CTkFrame):
         header_frame = ctk.CTkFrame(self, fg_color=self.BG_COLOR_2, corner_radius=0)
         header_frame.pack(fill="x")
 
-        header = ctk.CTkLabel(header_frame, text="Add Room Amenity", font=self.FONT_HEADER, text_color="black")
+        header = ctk.CTkLabel(header_frame, text="Add Amenity", font=self.FONT_HEADER, text_color="black")
         header.pack(pady=(20, 20))
 
         bottom_border = ctk.CTkFrame(header_frame, height=1, fg_color=self.SEPERATOR_COLOR, border_width=1)
@@ -93,6 +93,11 @@ class AddRoomAmenityFrame(ctk.CTkFrame):
 
                 if self.parent_page:
                     self.parent_page.refresh_amenities()
+
+                    # Mark related tabs for refresh if parent has room management page
+                    if hasattr(self.parent_page, 'main_page') and hasattr(self.parent_page.main_page, 'mark_for_refresh'):
+                        # When adding an amenity, mark rooms and room types tabs for refresh
+                        self.parent_page.main_page.mark_for_refresh('rooms', 'room_types')
 
                 # Focus on parent after message is dismissed
                 if self.parent_page and hasattr(self.parent_page.master, "lift"):

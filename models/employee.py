@@ -58,7 +58,7 @@ class EmployeeModel():
             cursor = conn.cursor()
             # finds the highest value id (previous id)
             cursor.execute("""
-            SELECT EMPLOYEE_ID 
+            SELECT EMPLOYEE_ID
             FROM EMPLOYEE
             ORDER BY CAST(SUBSTR(EMPLOYEE_ID, 3) AS INTEGER) DESC
             LIMIT 1

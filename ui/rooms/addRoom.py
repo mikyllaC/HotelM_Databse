@@ -197,10 +197,17 @@ class AddRoomFrame(ctk.CTkFrame):
             room_id = self.room_model.add_room(room_data)
             log(f"Room added successfully with ID: {room_id}")
 
-
             messagebox.showinfo("Success", "Room added successfully!")
+
+            # Refresh current tab and mark others for refresh
             if self.parent_page:
                 self.parent_page.populate_treeview()
+
+                # Mark related tabs for refresh if parent has room management page
+                if hasattr(self.parent_page, 'main_page') and hasattr(self.parent_page.main_page, 'mark_for_refresh'):
+                    # When adding a room, mark room types and amenities tabs for refresh
+                    self.parent_page.main_page.mark_for_refresh('room_types', 'amenities', 'room_rates')
+
             self.master.destroy()
         except Exception as e:
             log(f"Error adding room: {e}")
@@ -242,5 +249,3 @@ class AddRoomFrame(ctk.CTkFrame):
             self.room_type_dropdown.set(selected_type)
         else:
             self.room_type_dropdown.set("")
-
-
