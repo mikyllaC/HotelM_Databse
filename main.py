@@ -1,5 +1,6 @@
 # ============== Imports ==============
 import customtkinter as ctk             # customtkinter
+
 from ui.dashboard.dashboard import Dashboard      # dashboard screen
 from ui.auth.loginScreen import LoginScreen # login screen
 from utils.helpers import clear_screen, log
@@ -25,7 +26,7 @@ class Application(ctk.CTk):
 
         self.protocol("WM_DELETE_WINDOW", self.on_closing)
 
-        self.skip_login = True         # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
+        self.skip_login = False         # ENABLING THIS CAN CAUSE ISSUES AND ERRORS WITH CERTAIN ACTIONS
         if self.skip_login:
             log("[DEV] Login skipped manually.")
             self.on_login_success()     # skip login screen

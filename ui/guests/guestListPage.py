@@ -1,147 +1,54 @@
 import customtkinter as ctk
-import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox, StringVar
 
-#Notes ni Sofia sa GUI 
-#1. Added create guest beside create reservation
-#2. Fixed geometry of window to 1600x800
-#3. added Guest ID in table 
-#4. Removed Rooms in category
+from models.guest import GuestModel
+from ui.reservations.createReservation import CreateReservation
+from utils.helpers import log
 
-ctk.set_appearance_mode("light")
 
 class GuestListPage(ctk.CTkFrame):
+    BG_COLOR_1 = "#F7F7F7"
+    BG_COLOR_2 = "white"
+    BORDER_WIDTH = 1
+    BORDER_COLOR = "#b5b5b5"
+    TREE_HEADER_FONT = ("Roboto Condensed", 11, "bold")
+    TREE_FONT = ("Roboto Condensed", 11)
+
     def __init__(self, parent):
         super().__init__(parent)
-        self.configure(fg_color="#f0f0f0")
-        self.master.geometry("1600x800")
+        self.configure(fg_color=self.BG_COLOR_1)
+        self.guest_model = GuestModel()
+        self.guest_data = [["Name", "Phone", "Email", "Address", "Status"]]
+
+        self.create_widgets()
+        self.populate_guest_data()
 
 
-        # Placeholder Data
-        self.guest_data = [
-            ["Guest Name", "Guest ID" ,"Contact Information", "Status"],
-            ["Sunday", "000-00", "0916-123-1234", "Checked In"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-            ["-", "-", "-", "-"],
-        ]
+    def create_widgets(self):
+        # Title Label
+        title_label = ctk.CTkLabel(self, text="Guest Management", font=("Roboto Condensed", 28, "bold"),
+                                   text_color="#303644")
+        title_label.pack(anchor="nw", pady=(20, 20), padx=(35, 0))
 
-        self.build_ui()
+        # Action Bar Frame
+        self.action_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.action_frame.pack(anchor="n", padx=(35, 0), fill="x")
 
-    def build_ui(self):
-        self.build_title_label()
-        self.build_right_frame()
-        self.build_search_filter_bar()
-        self.build_left_table()
-
-    def build_title_label(self):
-        title_label = ctk.CTkLabel(self, text="Guest Management", font=("Arial", 28, "bold"))
-        title_label.pack(side="top", anchor="n", pady=(35, 45), padx=(10, 0))
-
-    def build_right_frame(self):
-        self.right_frame = ctk.CTkFrame(self, width=300, height=738, corner_radius=10, border_width=1)
-        self.right_frame.pack_propagate(False)
-        self.right_frame.pack_forget()
-
-        right_label = ctk.CTkLabel(self.right_frame, text="Guest Information", font=("Arial", 18, "bold"))
-        right_label.pack(pady=10)
-
-        close_button = ctk.CTkButton(
-            self.right_frame,
-            text="X",
-            command=self.close_right_frame,
-            width=20,
-            height=20,
-            corner_radius=10
-            , fg_color="#e57373", hover_color="#c62828"
-        )
-        close_button.place(relx=1.0, rely=0.0, anchor="ne", x=-5, y=5)
-
-        self.update_payment_button = ctk.CTkButton(
-            self.right_frame,
-            text="Update Payment",
-            font=("Arial", 16, "bold"),
-            width=180,
-            height=40,
-            command=self.update_payment_popup
-        )
-        self.update_payment_button.pack(side="bottom", padx=20, pady=10)
-
-        self.edit_guest_button = ctk.CTkButton(
-            self.right_frame,
-            text="Edit Guest Info",
-            font=("Arial", 16, "bold"),
-            width=180,
-            height=40
-        )
-        self.edit_guest_button.pack(side="bottom", padx=20, pady=(0, 10))
-
-    #Close right frame function
-    def close_right_frame(self):
-        self.right_frame.pack_forget()
-
-    def show_guest_info(self, guest_info):
-        for widget in self.right_frame.winfo_children():
-            if isinstance(widget, ctk.CTkLabel) and widget.cget("text") == "Guest Information":
-                continue
-            if isinstance(widget, ctk.CTkButton):
-                continue
-            widget.destroy()
-        # Display guest information (placeholder data)
-        labels = self.guest_data[0]
-        extra_info = {
-            "Email": "sunday@example.com",
-            "Address": "123 Main St, City",
-            "Check-in Date": "2023-10-01",
-            "Check-out Date": "2023-10-05",
-        }
-
-        wraplength = 200
-
-        for i, value in enumerate(guest_info):
-            info_label = ctk.CTkLabel(self.right_frame, text=f"{labels[i]}: {value}", font=("Arial", 14),
-                                      wraplength=wraplength, justify="left")
-            info_label.pack(anchor="w", padx=20, pady=2, fill="x")
-
-        for key, value in extra_info.items():
-            extra_label = ctk.CTkLabel(self.right_frame, text=f"{key}: {value}", font=("Arial", 14),
-                                       wraplength=wraplength, justify="left")
-            extra_label.pack(anchor="w", padx=20, pady=2, fill="x")
-
-    def build_search_filter_bar(self):
-        self.search_filter_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.search_filter_frame.pack(side="top", anchor="w", padx=(35, 0), expand=True, fill="x")
-
-        # Create Reservation Button
-        create_reservation_button = ctk.CTkButton(
-            self.search_filter_frame,
-            text="Create Reservation",
-            font=("Arial", 16, "bold"),
-            width=180,
-            height=36
-        )
-        create_reservation_button.pack(side="left", padx=(0, 10))
-
-        # Create Guest Button
-        create_guest_button = ctk.CTkButton(
-            self.search_filter_frame,
-            text="Create Guest",
+        # Add Guest Button
+        add_guest_button = ctk.CTkButton(
+            self.action_frame,
+            text="Add Guest",
             font=("Arial", 16, "bold"),
             width=150,
             height=36,
-            command=self.create_guest_popup
+            command=self.add_guest_popup
         )
-        create_guest_button.pack(side="left", padx=(0, 10))
-        
+        add_guest_button.pack(side="left", padx=(0, 10))
+
         # Search Entry
-        self.search_var = tk.StringVar()
+        self.search_var = StringVar()
         self.search_entry = ctk.CTkEntry(
-            self.search_filter_frame,
+            self.action_frame,
             width=220,
             height=36,
             placeholder_text="Search guest name...",
@@ -151,9 +58,9 @@ class GuestListPage(ctk.CTkFrame):
         self.search_entry.pack(side="left", padx=(0, 10))
 
         # Filter Combobox
-        self.filter_var = tk.StringVar(value="All Status")
+        self.filter_var = StringVar(value="All Status")
         self.filter_combobox = ctk.CTkComboBox(
-            self.search_filter_frame,
+            self.action_frame,
             width=160,
             height=36,
             values=["All Status", "Checked In", "Checked Out", "Reserved"],
@@ -162,152 +69,297 @@ class GuestListPage(ctk.CTkFrame):
         )
         self.filter_combobox.pack(side="left", padx=(0, 10))
 
-        # Search/Filter Event Binding
         self.search_entry.bind("<KeyRelease>", lambda e: self.filter_table())
         self.filter_combobox.bind("<<ComboboxSelected>>", lambda e: self.filter_table())
 
-        # Quote Text
-        quote_label = ctk.CTkLabel(
-            self.search_filter_frame,
-            text="'Let the pain teach you how to dougie'",
-            font=("Arial", 12, "italic", "bold"),
-            text_color="#888888"
-        )
-        quote_label.pack(side="right", padx=75)
+        # Table Frame
+        self.table_frame = ctk.CTkFrame(self, corner_radius=10, fg_color="transparent")
+        self.table_frame.pack_propagate(False)
+        self.table_frame.pack(padx=(10, 10), pady=(15, 10), fill="both", expand=True, anchor="n")
+
+        # Right Frame
+        self.right_frame = ctk.CTkFrame(self, width=300, fg_color=self.BG_COLOR_2, corner_radius=0,
+                                        border_width=1, border_color=self.BORDER_COLOR)
+        self.right_frame.place(relx=1, rely=0, anchor="ne", relwidth=0.25, relheight=1)
+        #initially hidden
+        self.right_frame.place_forget()
+
+        # Treeview for Guest Data
+        style = ttk.Style()
+        style.configure("Treeview.Heading", font=self.TREE_HEADER_FONT, anchor="w")
+        style.configure("Treeview", rowheight=25, font=self.TREE_FONT, anchor="w")
+
+        self.treeview = ttk.Treeview(self.table_frame, columns=["Name", "Phone", "Email", "Address", "Status"],
+                                     show="headings")
+        self.treeview.pack(expand=True, fill="both")
+
+        for col in self.guest_data[0]:
+            self.treeview.heading(col, text=col, anchor="w")
+            self.treeview.column(col, anchor="w")
+
+        # Set the column widths
+        self.treeview.column("Name", width=100, anchor="w")
+        self.treeview.column("Phone", width=50, anchor="w")
+        self.treeview.column("Email", width=150, anchor="w")
+        self.treeview.column("Address", width=450, anchor="w")
+        self.treeview.column("Status", width=50, anchor="w")
+
+        self.update_treeview()
+
+        self.treeview.bind("<<TreeviewSelect>>", self.on_row_select)
+
+
+    def format_address(self, line1, line2, street, city, state, country):
+        parts = [line1, line2, street, city, state, country]
+        return ', '.join(part for part in parts if part and part.strip())
+
+
+    def populate_guest_data(self):
+        guest_data = self.guest_model.get_all_guests()
+
+        if not guest_data:
+            self.guest_data = [["ID", "Name", "Phone", "Email", "Address", "Status"],
+                               ["-", "-", "-", "-", "-", "-"]]
+        else:
+            self.guest_data = [["ID", "Name", "Phone", "Email", "Address", "Status"]] + [
+                [row[0], f"{row[2]} {row[3]}", row[4], row[5],
+                 f"{self.format_address(row[6],row[7],row[8],row[9],row[10],row[11])}", row[12]] for row in guest_data
+            ]
+
+        self.update_treeview()
+
 
     def filter_table(self):
         search_text = self.search_var.get().lower()
         selected_status = self.filter_var.get()
 
+        filtered_data = [self.guest_data[0]]
+        for row in self.guest_data[1:]:
+            name = row[1].lower() if len(row) > 1 else ""
+            status = row[5] if len(row) > 5 else ""
+            if (search_text in name) and (selected_status == "All Status" or status == selected_status):
+                filtered_data.append(row)
+
+        self.update_treeview(filtered_data)
+
+
+    def update_treeview(self, data=None):
+        if data is None:
+            data = self.guest_data
+
         for item in self.treeview.get_children():
             self.treeview.delete(item)
 
-        for row in self.guest_data[1:]:
-            name, _, _, status = row
-            if (search_text in name.lower() or not search_text) and \
-               (selected_status == "All Status" or status == selected_status):
-                self.treeview.insert("", "end", values=row)
+        # process the data excluding the header
+        for row in data[1:]:
+            guest_id = row[0]  # Implement this method or adjust as needed
+            self.treeview.insert("", "end", iid=guest_id, values=row[1:])  # Exclude the ID from the displayed values
 
-    #Function to update payment status window pop up
-    def update_payment_popup(self):
-        payment_window = ctk.CTkToplevel(self)
-        payment_window.title("Update Payment")
-        payment_window.geometry("400x300")
 
-        ctk.CTkLabel(payment_window, text="Update Payment", font=("Arial", 20, "bold")).pack(pady=(20, 10))
-        ctk.CTkLabel(payment_window, text="Enter new payment status:", font=("Arial", 14)).pack(pady=(30, 10))
+    def show_guest_info(self, guest_info):
+        # Clear previous widgets in the right frame
+        for widget in self.right_frame.winfo_children():
+            widget.destroy()
 
-        payment_status_var = tk.StringVar(value="Paid")
-        payment_status_combobox = ctk.CTkComboBox(
-            payment_window,
-            values=["Paid", "Unpaid", "Pending", "Refunded"],
-            variable=payment_status_var,
-            width=200
+        self.current_guest_index = next(
+            (i for i, row in enumerate(self.guest_data[1:]) if str(row[0]) == str(guest_info['GUEST_ID'])), None)
+
+
+        # Header
+        self.right_frame.grid_columnconfigure(0, weight=1)
+
+        header_frame = ctk.CTkFrame(self.right_frame, fg_color=self.BG_COLOR_2, corner_radius=0,
+                                    border_width=1, border_color=self.BORDER_COLOR)
+        header_frame.grid(row=0, column=0, sticky="ew")
+        header_frame.grid_columnconfigure(0, weight=1)
+        header_frame.grid_columnconfigure(1, weight=1)
+
+        # Left Header Frame
+        left_header_frame = ctk.CTkFrame(header_frame, fg_color=self.BG_COLOR_2)
+        left_header_frame.grid(row=0, column=0, padx=(10, 0), pady=(10, 0), sticky="w")
+
+
+        # Previous and Next Buttons
+        self.current_guest_index = next((i for i, row in enumerate(self.guest_data[1:])
+                                         if str(row[0]) == str(guest_info['GUEST_ID'])), None)
+
+        # Define as None so they can be referenced in update_nav_buttons
+        previous_button = None
+        next_button = None
+
+        def go_to_previous_guest():
+            if self.current_guest_index is not None and self.current_guest_index > 0:
+                self.current_guest_index -= 1
+                guest_id = self.guest_data[self.current_guest_index + 1][0]  # +1 to skip header
+                self.treeview.selection_set(guest_id)
+                self.treeview.see(guest_id)
+                guest_info = self.guest_model.get_guest_by_id(int(guest_id))
+                if guest_info:
+                    self.show_guest_info(guest_info)
+                # Do not call update_nav_buttons here, as the old buttons are destroyed
+
+        def go_to_next_guest():
+            if self.current_guest_index is not None and self.current_guest_index < len(self.guest_data) - 2:
+                self.current_guest_index += 1
+                guest_id = self.guest_data[self.current_guest_index + 1][0]
+                self.treeview.selection_set(guest_id)
+                self.treeview.see(guest_id)
+                guest_info = self.guest_model.get_guest_by_id(int(guest_id))
+                if guest_info:
+                    self.show_guest_info(guest_info)
+                # Do not call update_nav_buttons here, as the old buttons are destroyed
+
+        def update_nav_buttons():
+            # Only update state if buttons still exist (i.e., not destroyed)
+            if previous_button and next_button:
+                if self.current_guest_index is None:
+                    previous_button.configure(state="disabled")
+                    next_button.configure(state="disabled")
+                else:
+                    previous_button.configure(state="normal" if self.current_guest_index > 0 else "disabled")
+                    next_button.configure(
+                        state="normal" if self.current_guest_index < len(self.guest_data) - 2 else "disabled")
+
+        # Previous and Next Buttons
+        previous_button = ctk.CTkButton(left_header_frame, text="<", text_color="black", width=30, height=30,
+                                        corner_radius=4, fg_color=self.BG_COLOR_2,
+                                        border_width=1, border_color=self.BORDER_COLOR,
+                                        font=("Roboto", 20), command=go_to_previous_guest)
+        previous_button.grid(column=0, row=0, padx=(10, 5))
+
+        next_button = ctk.CTkButton(left_header_frame, text=">", text_color="black", width=30, height=30,
+                                    corner_radius=4, fg_color=self.BG_COLOR_2,
+                                    border_width=1, border_color=self.BORDER_COLOR,
+                                    font=("Roboto", 20), command=go_to_next_guest)
+        next_button.grid(column=1, row=0, padx=(0, 10))
+
+        update_nav_buttons()
+
+
+        # Right Header Frame
+        right_header_frame = ctk.CTkFrame(header_frame, fg_color=self.BG_COLOR_2)
+        right_header_frame.grid(row=0, column=1, padx=(0, 10), pady=(10, 0), sticky="e")
+
+        # Edit and Exit Buttons
+        edit_button = ctk.CTkButton(right_header_frame, text="Edit", text_color="black", width=50, height=30,
+                                    corner_radius=4, fg_color=self.BG_COLOR_2,
+                                    border_width=1, border_color=self.BORDER_COLOR,
+                                    command=self.edit_guest_popup)
+        edit_button.grid(column=0, row=0, padx=(0, 5))
+        exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
+                                    corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
+                                    command=lambda: [self.right_frame.place_forget(),
+                                                     self.treeview.selection_remove(self.treeview.selection()),
+                                                     setattr(self, 'current_guest_index', None)],
+                                    font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
+        exit_button.grid(column=1, row=0, padx=(5, 10))
+
+        # Bottom Header Border
+        bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
+        bottom_border.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(10,0))
+
+
+        # Title
+        title_frame = ctk.CTkFrame(self.right_frame, fg_color=self.BG_COLOR_2)
+        title_frame.grid(row=1, column=0, padx=(20, 20), pady=(20, 10), sticky="ew")
+        title_frame.grid_columnconfigure(0, weight=1)
+
+        title_label = ctk.CTkLabel(title_frame, text="Overview", font=("Roboto Condensed", 18))
+        title_label.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky="w")
+
+        bottom_border = ctk.CTkFrame(title_frame, height=1, fg_color="#D3D3D3", border_width=1)
+        bottom_border.grid(row=1, column=0, sticky="ew", padx=(0, 0), pady=(10, 0))
+
+
+        # Guest Information
+        content_frame = ctk.CTkFrame(self.right_frame, fg_color=self.BG_COLOR_2)
+        content_frame.grid(row=2, column=0, padx=(20, 20), pady=(20, 20), sticky="nsew")
+
+        full_name = f"{guest_info['FIRST_NAME']} {guest_info['LAST_NAME']}"
+        address = self.format_address(
+            guest_info.get('ADDRESS_LINE1', ''),
+            guest_info.get('ADDRESS_LINE2', ''),
+            guest_info.get('STREET', ''),
+            guest_info.get('CITY', ''),
+            guest_info.get('STATE', ''),
+            guest_info.get('COUNTRY', '')
         )
-        payment_status_combobox.pack(pady=10)
 
-        def save_payment():
-            payment_window.destroy()
+        # Add information rows
+        info_rows = [
+            ("Guest Id", guest_info['GUEST_ID']),
+            ("Name", full_name),
+            ("Phone", guest_info['CONTACT_NUMBER']),
+            ("Email", guest_info['EMAIL']),
+            ("Address", address),
+            ("Status", guest_info['STATUS']),
+            ("Employee Id", guest_info['EMPLOYEE_ID']),
+        ]
+        # Create labels for each information row
+        for index, (label, value) in enumerate(info_rows):
+            # Label "cell" frame
+            label_cell = ctk.CTkFrame(content_frame, fg_color=self.BG_COLOR_1, corner_radius=0,
+                                      border_width=1, border_color=self.BORDER_COLOR)
+            label_cell.grid(row=index, column=0, sticky="nsew", padx=(0, 0), pady=0)
+            #label_cell.grid_columnconfigure(0, weight=1)
+            label_text = ctk.CTkLabel(label_cell, text=label, font=("Roboto", 13), anchor="w")
+            label_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-        ctk.CTkButton(payment_window, text="Update", command=save_payment, width=120).pack(pady=20)
+            # Value "cell" frame
+            value_cell = ctk.CTkFrame(content_frame, fg_color=self.BG_COLOR_2, corner_radius=0,
+                                      border_width=1, border_color=self.BORDER_COLOR)
+            value_cell.grid(row=index, column=1, sticky="nsew", padx=(0, 0), pady=0)
+            #value_cell.grid_columnconfigure(0, weight=1)
+            value_text = ctk.CTkLabel(value_cell, text=str(value), font=("Roboto", 13),
+                                      anchor="w", wraplength=250, justify="left")
+            value_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-    #Function for guest information window pop up
-    def build_left_table(self):
-        self.left_frame = ctk.CTkFrame(self, width=1250, height=738, corner_radius=10,
-                                       border_width=0, fg_color="transparent")
-        self.left_frame.pack_propagate(False)
-        self.left_frame.pack(side="left", padx=(10, 1), pady=(15, 10), fill="y", anchor="n")
+        content_frame.grid_columnconfigure((0, 1), weight=1, uniform="info")
 
-        style = ttk.Style()
-        style.configure("Treeview.Heading", font=("Arial", 15, "bold"), anchor="w")
-        style.configure("Treeview", rowheight=30, font=("Courier", 14), anchor="w")
 
-        self.treeview = ttk.Treeview(self.left_frame, columns=self.guest_data[0], show="headings", height=20)
-        self.treeview.pack(expand=True, fill="both", padx=10, pady=20)
-
-        for col in self.guest_data[0]:
-            self.treeview.heading(col, text=col, anchor="w")
-            self.treeview.column(col, width=200, anchor="w")
-
-        for row in self.guest_data[1:]:
-            self.treeview.insert("", "end", values=row)
-
-        self.treeview.bind("<<TreeviewSelect>>", self.on_row_select)
-
-        scrollbar = ttk.Scrollbar(self.left_frame, orient="vertical", command=self.treeview.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.treeview.configure(yscrollcommand=scrollbar.set)
-
-    #Function to handle row selection in the table
     def on_row_select(self, event):
         selected_item = self.treeview.selection()
+
         if selected_item:
-            item_values = self.treeview.item(selected_item[0], "values")
-            if item_values and item_values[0] != "-":
-                self.right_frame.pack(side="left", padx=(1, 20), pady=20)
-                self.show_guest_info(item_values)
-            else:
-                self.right_frame.pack_forget()
+            guest_id = selected_item[0]
+            guest_info = self.guest_model.get_guest_by_id(int(guest_id))
+            #log(f"Selected Guest ID: {guest_id}, Info: {guest_info}")
+            if guest_info:
+                self.right_frame.place(relx=1, rely=0, anchor="ne", relwidth=0.4, relheight=1)
+                self.show_guest_info(guest_info)
         else:
-            self.right_frame.pack_forget()
+            self.right_frame.place_forget()
 
-        #Create Guest function
-    def create_guest_popup(self):
+
+    def add_guest_popup(self):
+        from ui.guests.addGuest import AddGuestFrame
+
         popup = ctk.CTkToplevel(self)
-        popup.title("Create Guest")
-        popup.geometry("450x600")
+        popup.title("Add Guest")
+        popup.geometry("575x750")
+        popup.grab_set()
 
-        ctk.CTkLabel(popup, text="Create New Guest", font=("Arial", 20, "bold")).pack(pady=(20, 10))
+        frame = AddGuestFrame(parent_popup=popup, parent_page=self)
+        frame.pack(fill="both", expand=True)
 
-        name_var = tk.StringVar()
-        contact_var = tk.StringVar()
-        rooms_var = tk.StringVar()
-        status_var = tk.StringVar(value="Checked In")
 
-        ctk.CTkLabel(popup, text="First Name:", font=("Arial", 14)).pack(pady=(10, 0))
-        first_name_var = tk.StringVar()
-        first_name_entry = ctk.CTkEntry(popup, textvariable=first_name_var, width=250)
-        first_name_entry.pack()
+    def edit_guest_popup(self):
+        from ui.guests.editGuest import EditGuestFrame
 
-        ctk.CTkLabel(popup, text="Last Name:", font=("Arial", 14)).pack(pady=(10, 0))
-        last_name_var = tk.StringVar()
-        last_name_entry = ctk.CTkEntry(popup, textvariable=last_name_var, width=250)
-        last_name_entry.pack()
+        selected_item = self.treeview.selection()
+        if selected_item:
+            guest_id = int(selected_item[0])
 
-        ctk.CTkLabel(popup, text="Contact Information:", font=("Arial", 14)).pack(pady=(10, 0))
-        contact_entry = ctk.CTkEntry(popup, textvariable=contact_var, width=250)
-        contact_entry.pack()
+            popup = ctk.CTkToplevel(self)
+            popup.title("Edit Guest")
+            popup.geometry("575x750")
+            popup.grab_set()
 
-        ctk.CTkLabel(popup, text="Email:", font=("Arial", 14)).pack(pady=(10, 0))
-        email_var = tk.StringVar()
-        email_entry = ctk.CTkEntry(popup, textvariable=email_var, width=250)
-        email_entry.pack()
-
-        def on_create():
-            popup.destroy()
-
-        # Button Frame for Create and Close buttons
-        button_frame = ctk.CTkFrame(popup, fg_color="transparent")
-        button_frame.pack(pady=10)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Create Guest",
-            font=("Arial", 16, "bold"),
-            width=150,
-            height=36,
-        ).pack(side="left", padx=20, pady=10)
-
-        ctk.CTkButton(
-            button_frame,
-            text="Close",
-            font=("Arial", 16, "bold"),
-            fg_color="#e57373",
-            command=on_create,
-            width=150,
-            height=36
-        ).pack(side="left", padx=10, pady=10)
-
+            frame = EditGuestFrame(parent_popup=popup, parent_page=self, guest_id=guest_id)
+            frame.pack(fill="both", expand=True)
+        else:
+            messagebox.showwarning("No Selection", "Please select a guest to edit.")
+            log("Edit Guest: No guest selected for editing.")
 
 
 if __name__ == "__main__":
