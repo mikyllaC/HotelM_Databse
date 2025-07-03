@@ -4,30 +4,6 @@ from utils.helpers import log, get_connection
 def main():
     room_model = RoomModel()
 
-    # sample_room_type_data = {
-    #     "TYPE_NAME": "Standard Room",
-    #     "BED_TYPE": "Queen",
-    #     "CAPACITY": 2,  # Base adult capacity
-    #     "EXTRA_CAPACITY": 1,  # Extra capacity for additional guests
-    #     "BASE_PRICE": 99.99,  # Base rate per night
-    #     "EXTRA_ADULT_RATE": 25.0,  # Cost for extra adult
-    #     "EXTRA_CHILD_RATE": 15.0,  # Cost for extra child
-    #     "IMAGE": "standard_room.jpg",
-    #     "DESCRIPTION": "Comfortable standard room with one queen bed"
-    # }
-    # room_type_id = room_model.add_room_type(sample_room_type_data)
-    #
-    # sample_room_data = {
-    #     "ROOM_NUMBER": "101",
-    #     "ROOM_TYPE_ID": room_type_id,
-    #     "FLOOR": 1,
-    #     "STATUS": "Available",
-    #     "NOTES": "Newly renovated"
-    # }
-    # room_id = room_model.add_room(sample_room_data)
-    # amenity_id = room_model.add_amenity("Air Conditioning")
-    # room_model.assign_amenity_to_room(room_id, amenity_id)
-
 
 class RoomModel:
     def __init__(self):
