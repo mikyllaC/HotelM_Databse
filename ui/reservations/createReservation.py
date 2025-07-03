@@ -216,7 +216,7 @@ class CreateReservation(ctk.CTkFrame):
 
         popup = ctk.CTkToplevel(self)
         popup.title("Add Guest")
-        popup.geometry("900x600")
+        popup.geometry("575x750")
         popup.grab_set()
 
         add_guest_frame = AddGuestFrame(parent_popup=popup, parent_page=self)
@@ -260,6 +260,29 @@ class CreateReservation(ctk.CTkFrame):
         if check_out <= check_in:
             messagebox.showerror("Validation Error", "Check-out date must be after check-in date.")
             return False
+
+        # Check maximum occupancy
+        selected_room = self.entries["entry_rooms"].get()
+        room_id = self.room_map.get(selected_room)
+
+        if room_id:
+            num_adults = int(self.entries["entry_adults"].get())
+            num_children = int(self.entries["entry_children"].get() or 0)
+            total_guests = num_adults + num_children
+
+            # Get room data with room type information
+            room_data = self.room_model.get_room_data_with_type(room_id)
+            if room_data and "MAX_OCCUPANCY" in room_data:
+                max_occupancy = room_data["MAX_OCCUPANCY"]
+
+                if total_guests > max_occupancy:
+                    messagebox.showerror(
+                        "Validation Error",
+                        f"The selected room type '{room_data['TYPE_NAME']}' has a maximum occupancy of {max_occupancy}.\n\n"
+                        f"You are attempting to book for {total_guests} guests ({num_adults} adults, {num_children} children).\n\n"
+                        "Please select a different room type with higher capacity or reduce the number of guests."
+                    )
+                    return False
 
         return True
 

@@ -154,17 +154,23 @@ class RoomTypesTab(ctk.CTkFrame):
         right_header_frame = ctk.CTkFrame(header_frame, fg_color=self.BG_COLOR_2)
         right_header_frame.grid(row=0, column=0, padx=(0, 10), pady=(10, 0), sticky="e")
 
-        # Edit and Exit Buttons
+        # Edit, Delete, and Exit Buttons
         self.edit_button = ctk.CTkButton(right_header_frame, text="Edit", text_color="black", width=50, height=30,
                                         corner_radius=4, fg_color=self.BG_COLOR_2,
                                         border_width=1, border_color=self.BORDER_COLOR)
         self.edit_button.grid(column=0, row=0, padx=(0, 5))
+
+        self.delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=60, height=30,
+                                         corner_radius=4, fg_color="#DC3545", hover_color="#B02A3A",
+                                         command=lambda: self.delete_room_type_confirmation(int(room_type_id)))
+        self.delete_button.grid(column=1, row=0, padx=(0, 5))
+
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                     corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
                                     command=lambda: [self.right_frame.place_forget(),
                                                      self.treeview.selection_remove(self.treeview.selection())],
                                     font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
-        exit_button.grid(column=1, row=0, padx=(5, 10))
+        exit_button.grid(column=2, row=0, padx=(5, 10))
 
         # Bottom Header Border
         bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
@@ -262,9 +268,70 @@ class RoomTypesTab(ctk.CTkFrame):
 
 
     def edit_room_type_popup(self, room_type_id):
-        # This would open a popup to edit the room type
-        # For now it's just a placeholder
-        messagebox.showinfo("Edit Room Type", f"Editing room type with ID {room_type_id}")
+        """Open a popup to edit the selected room type"""
+        from ui.rooms.editRoomType import EditRoomTypeFrame
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Edit Room Type")
+        popup.geometry("1100x700")
+        popup.grab_set()
+
+        frame = EditRoomTypeFrame(parent_popup=popup, room_type_id=room_type_id, parent_page=self)
+        frame.pack(fill="both", expand=True)
+
+    def delete_room_type_confirmation(self, room_type_id):
+        """Show confirmation dialog before deleting a room type"""
+        # Check if any rooms are using this room type
+        associated_rooms = self.room_model.get_rooms_by_room_type_id(room_type_id)
+        room_type = self.room_model.get_room_type_by_id(room_type_id)
+
+        if not room_type:
+            messagebox.showerror("Error", "Room type not found.")
+            return
+
+        if not associated_rooms:
+            # No rooms using this room type, proceed with simple confirmation
+            confirm = messagebox.askyesno("Confirm Delete",
+                                        f"Are you sure you want to delete the room type '{room_type['TYPE_NAME']}'?",
+                                        icon="warning")
+            if confirm:
+                self.delete_room_type(room_type_id)
+        else:
+            # Rooms are using this type, show warning and ask to delete all
+            room_numbers = [room['ROOM_NUMBER'] for room in associated_rooms]
+            message = (f"Warning: This room type '{room_type['TYPE_NAME']}' is being used by {len(associated_rooms)} rooms:\n\n"
+                       f"{', '.join(room_numbers[:10])}"
+                       f"{'... and more' if len(room_numbers) > 10 else ''}\n\n"
+                       f"Do you want to delete both the room type AND all associated rooms?")
+
+            confirm = messagebox.askyesno("Warning: Rooms Will Be Deleted", message, icon="warning")
+            if confirm:
+                self.delete_room_type(room_type_id, delete_associated_rooms=True)
+
+
+    def delete_room_type(self, room_type_id, delete_associated_rooms=False):
+        """Delete the room type and refresh the list"""
+        try:
+            success = self.room_model.hard_delete_room_type(room_type_id, delete_associated_rooms=delete_associated_rooms)
+
+            if success:
+                self.populate_treeview()
+
+                # Hide the right frame if it was showing the deleted room type
+                self.right_frame.place_forget()
+                self.treeview.selection_remove(self.treeview.selection())
+
+                # If we deleted associated rooms, mark the Rooms tab for refresh
+                if delete_associated_rooms:
+                    # Notify the parent page that rooms tab needs refresh
+                    self.main_page.needs_refresh['rooms'] = True
+
+                messagebox.showinfo("Success", "Room type and associated rooms deleted successfully." if delete_associated_rooms else "Room type deleted successfully.")
+            else:
+                messagebox.showerror("Error", "Failed to delete room type. It may have active reservations.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred: {str(e)}")
+            log(f"Error in delete_room_type: {e}")
 
 
     def load_icon(self, icon_file, size):

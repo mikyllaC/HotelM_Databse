@@ -164,17 +164,17 @@ class RoomsTab(ctk.CTkFrame):
         right_header_frame = ctk.CTkFrame(header_frame, fg_color=self.BG_COLOR_2)
         right_header_frame.grid(row=0, column=0, padx=(0, 10), pady=(10, 0), sticky="e")
 
-        # Edit, Delete and Exit Buttons
+        # Delete, Edit and Exit Buttons
         self.edit_button = ctk.CTkButton(right_header_frame, text="Edit", text_color="black", width=50, height=30,
                                          corner_radius=4, fg_color=self.BG_COLOR_2,
                                          border_width=1, border_color=self.BORDER_COLOR,
-                                         command=lambda: self.edit_room_popup(room_values[1]))
+                                         command=lambda: self.edit_room_popup(self.treeview.selection()[0]))
         self.edit_button.grid(column=0, row=0, padx=(0, 5))
 
         self.delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=60, height=30,
                                            corner_radius=4, fg_color=self.DELETE_COLOR,
                                            hover_color="#B02A3A",
-                                           command=lambda: self.delete_room_confirmation(room_values[1]))
+                                           command=lambda: self.delete_room_confirmation(self.treeview.selection()[0]))
         self.delete_button.grid(column=1, row=0, padx=(0, 5))
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                     corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
@@ -209,9 +209,9 @@ class RoomsTab(ctk.CTkFrame):
         # Add info rows
         info_rows = [
             ("Room Number", room_values[0]),
-            ("Floor", room_values[2]),
-            ("Status", room_values[3]),
-            ("Notes", room_values[4] if room_values[4] else "N/A")
+            ("Floor", room_values[3]),
+            ("Status", room_values[4]),
+            ("Notes", room_values[5] if room_values[5] else "N/A")
         ]
 
         room_frame.grid_columnconfigure(0, minsize=150, weight=1, uniform="info")
@@ -278,9 +278,6 @@ class RoomsTab(ctk.CTkFrame):
             ("Extra Adults", room_type.get("EXTRA_ADULT_NUM", 0) if room_type else "Unknown"),
             ("Extra Children", room_type.get("EXTRA_CHILD_NUM", 0) if room_type else "Unknown"),
             ("Max Occupancy", room_type["MAX_OCCUPANCY"] if room_type else "Unknown"),
-            ("Base Rate", f"${room_type.get('BASE_RATE', 0):.2f}" if room_type else "Unknown"),
-            ("Extra Adult Rate", f"${room_type.get('EXTRA_ADULT_RATE', 0):.2f}" if room_type else "Unknown"),
-            ("Extra Child Rate", f"${room_type.get('EXTRA_CHILD_RATE', 0):.2f}" if room_type else "Unknown"),
             ("Description", room_type.get("DESCRIPTION", "N/A") if room_type else "Unknown"),
             ("Image", room_type.get("IMAGE", "None") if room_type else "Unknown"),
             ("Amenities", amenities_str)
@@ -516,4 +513,3 @@ class RoomsTab(ctk.CTkFrame):
         else:
             log(f"[Error]: {icon_file} not found at {path}!")
             return None
-

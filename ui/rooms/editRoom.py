@@ -183,8 +183,13 @@ class EditRoomFrame(ctk.CTkFrame):
     def check_room_number_exists(self, room_number):
         existing_rooms = self.room_model.get_all_rooms()
 
+        # Convert current room ID to integer for proper comparison
+        current_room_id = int(self.room_id)
+
         for room in existing_rooms:
-            if str(room['ROOM_NUMBER']).strip() == str(room_number).strip() and room['ROOM_ID'] != self.room_id:
+            # Convert room ID to integer and compare room numbers as strings
+            if (str(room['ROOM_NUMBER']).strip() == str(room_number).strip() and
+                int(room['ROOM_ID']) != current_room_id):
                 return True
 
         return False

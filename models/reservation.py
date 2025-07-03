@@ -31,9 +31,6 @@ class ReservationModel:
                     
                     STATUS VARCHAR(20) DEFAULT 'Booked',
                     
-                    PAYMENT_STATUS VARCHAR(20) DEFAULT 'Pending',
-                    PAYMENT_METHOD TEXT,
-                    
                     NOTES TEXT,
                     EMPLOYEE_ID TEXT,
                     
@@ -198,7 +195,7 @@ class ReservationModel:
                 allowed_fields = [
                     "CHECK_IN_DATE", "CHECK_OUT_DATE",
                     "NUMBER_OF_ADULTS", "NUMBER_OF_CHILDREN", "STATUS",
-                    "PAYMENT_STATUS", "PAYMENT_METHOD", "NOTES", "EMPLOYEE_ID"
+                    "NOTES", "EMPLOYEE_ID"
                 ]
 
                 update_parts = []
@@ -260,16 +257,22 @@ class ReservationModel:
             return False
 
     def delete_reservation(self, reservation_id):
+        """Delete a reservation permanently from the database, but only if it's been cancelled"""
         try:
+            # First, check if the reservation exists and is cancelled
+            reservation = self.get_reservation_by_id(reservation_id)
+            if not reservation:
+                return False
+
+            # Only allow deletion of cancelled reservations
+            if reservation.get("STATUS") != "Cancelled":
+                return False
+
+            # Delete the reservation
             with get_connection() as conn:
                 cursor = conn.cursor()
-
-                # Delete the reservation
-                cursor.execute("""
-                    DELETE FROM RESERVATION
-                    WHERE RESERVATION_ID = ?
-                """, (reservation_id,))
-
+                query = "DELETE FROM RESERVATION WHERE RESERVATION_ID = ?"
+                cursor.execute(query, (reservation_id,))
                 conn.commit()
 
                 # Check if the deletion was successful
@@ -277,11 +280,11 @@ class ReservationModel:
                     log(f"Deleted reservation {reservation_id}")
                     return True
                 else:
-                    log(f"No reservation found with ID {reservation_id}")
+                    log(f"No reservation found with ID {reservation_id} for deletion")
                     return False
 
         except Exception as e:
-            log(f"Error deleting reservation {reservation_id}: {str(e)}")
+            log(f"Error deleting reservation: {str(e)}", "ERROR")
             return False
 
     def get_reservations_by_guest_and_dates(self, guest_id, check_in_date, check_out_date):

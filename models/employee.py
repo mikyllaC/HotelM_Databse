@@ -46,7 +46,7 @@ class EmployeeModel():
                     HIRE_DATE DATE,
                     SALARY REAL,
                     ASSIGNED_TO TEXT,
-                    STATUS TEXT NOT NULL DEFAULT 'Available'
+                    STATUS TEXT NOT NULL DEFAULT 'Active'
                 )""")
             conn.commit()
 
@@ -103,7 +103,7 @@ class EmployeeModel():
                       employee_data.get("HIRE_DATE"),
                       employee_data.get("SALARY"),
                       employee_data.get("ASSIGNED_TO"),
-                      employee_data.get("STATUS", "Available")
+                      employee_data.get("STATUS", "Active")
                       ))
             conn.commit()
 
@@ -172,6 +172,21 @@ class EmployeeModel():
 
         except sqlite3.Error as e:
             log(f"[DB-ERROR] Failed to assign staff: {e}")
+            return False
+
+
+    def delete_employee(self, employee_id):
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM EMPLOYEE WHERE EMPLOYEE_ID = ?", (employee_id,))
+                conn.commit()
+
+                rows_deleted = cursor.rowcount
+                return rows_deleted == 1  # Return True if exactly one row was deleted
+
+        except sqlite3.Error as e:
+            log(f"[DB-ERROR] Failed to delete employee: {e}")
             return False
 
 

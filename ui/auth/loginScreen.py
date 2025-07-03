@@ -28,7 +28,7 @@ class LoginScreen(ctk.CTkFrame):
         # Center the login card
         login_card = ctk.CTkFrame(main_container,
                                  width=450,
-                                 height=600,
+                                 height=700,
                                  corner_radius=20,
                                  fg_color="white",
                                  border_width=1,
@@ -124,7 +124,21 @@ class LoginScreen(ctk.CTkFrame):
                                           hover_color="#1e40af",
                                           corner_radius=8,
                                           command=self.check_login)
-        self.login_button.pack(fill="x", pady=(0, 30))
+        self.login_button.pack(fill="x", pady=(0, 15))
+
+        # ---- Sign Up Button ----
+        self.signup_button = ctk.CTkButton(form_frame,
+                                          text="Create New Account",
+                                          height=45,
+                                          font=("Segoe UI", 14, "bold"),
+                                          fg_color="transparent",
+                                          text_color="#1f538d",
+                                          hover_color="#f8fafc",
+                                          border_width=2,
+                                          border_color="#1f538d",
+                                          corner_radius=8,
+                                          command=self.show_signup)
+        self.signup_button.pack(fill="x", pady=(0, 30))
 
         # Footer
         footer_frame = ctk.CTkFrame(login_card, fg_color="transparent")
@@ -181,3 +195,21 @@ class LoginScreen(ctk.CTkFrame):
             # Clear password field on failed login
             self.password_entry.delete(0, 'end')
             self.employee_id_entry.focus_set()
+
+    def show_signup(self):
+        """Navigate to the signup screen"""
+        from ui.auth.signupScreen import SignupScreen
+        from utils.helpers import clear_screen
+
+        # Clear current screen and show signup screen
+        clear_screen(self.master)
+        signup_screen = SignupScreen(self.master, self.return_to_login)
+        signup_screen.pack(fill="both", expand=True)
+
+    def return_to_login(self):
+        """Return to login screen from signup"""
+        from utils.helpers import clear_screen
+
+        clear_screen(self.master)
+        login_screen = LoginScreen(self.master, self.callback)
+        login_screen.pack(fill="both", expand=True)

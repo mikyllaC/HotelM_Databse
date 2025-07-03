@@ -58,6 +58,19 @@ class BillingPaymentPage(ctk.CTkFrame):
         )
         process_payment_button.pack(side="left", padx=(0, 10))
 
+        # Process Refund Button
+        process_refund_button = ctk.CTkButton(
+            self.action_frame,
+            text="Process Refund",
+            font=("Roboto Condensed", 16, "bold"),
+            width=180,
+            height=36,
+            command=self.process_refund_popup,
+            fg_color="#dc3545",
+            hover_color="#c82333"
+        )
+        process_refund_button.pack(side="left", padx=(0, 10))
+
         # Search Entry with auto-filter
         self.search_var = StringVar()
         self.search_var.trace_add("write", lambda name, index, mode: self.filter_table())
@@ -546,3 +559,119 @@ class BillingPaymentPage(ctk.CTkFrame):
     def refresh_data(self):
         """Refresh the billing table"""
         self.populate_billing_records()
+
+    def process_refund_popup(self, billing_data=None):
+        """Open refund processing dialog"""
+        if not billing_data:
+            selected_item = self.treeview.selection()
+            if not selected_item:
+                messagebox.showwarning("No Selection", "Please select a billing record to process refund.")
+                return
+            billing_data = self.treeview.item(selected_item[0], "values")
+
+        if billing_data[7] not in ["Paid", "Completed"]:
+            messagebox.showinfo("Refund Not Applicable", "This invoice is not eligible for a refund.")
+            return
+
+        # Get reservation ID
+        reservation_id_str = billing_data[1]
+        reservation_id = int(reservation_id_str[1:]) if reservation_id_str.startswith("R") else None
+
+        if not reservation_id:
+            messagebox.showerror("Error", "Could not determine reservation ID.")
+            return
+
+        # Create refund dialog
+        refund_window = ctk.CTkToplevel(self)
+        refund_window.title("Process Refund")
+        refund_window.geometry("450x650")
+        refund_window.grab_set()
+        refund_window.configure(fg_color=self.BG_COLOR_2)
+
+        # Refund form
+        ctk.CTkLabel(refund_window, text="Process Refund",
+                    font=("Roboto Condensed", 20, "bold")).pack(pady=(20, 10))
+
+        ctk.CTkLabel(refund_window, text=f"Invoice: {billing_data[0]}",
+                    font=("Roboto Condensed", 14)).pack(pady=5)
+        ctk.CTkLabel(refund_window, text=f"Guest: {billing_data[2]}",
+                    font=("Roboto Condensed", 14)).pack(pady=5)
+        ctk.CTkLabel(refund_window, text=f"Amount: {billing_data[6]}",
+                    font=("Roboto Condensed", 16, "bold")).pack(pady=10)
+
+        # Refund method
+        ctk.CTkLabel(refund_window, text="Refund Method:",
+                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
+
+        refund_method_var = ctk.StringVar(value="Cash")
+        refund_method_dropdown = ctk.CTkComboBox(
+            refund_window,
+            values=["Cash", "Credit Card", "Debit Card", "Bank Transfer", "Check"],
+            variable=refund_method_var,
+            width=200
+        )
+        refund_method_dropdown.pack(pady=5)
+
+        # Amount refunded
+        ctk.CTkLabel(refund_window, text="Amount Refunded:",
+                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
+
+        amount_refund_entry = ctk.CTkEntry(refund_window, width=200)
+        amount_refund_entry.pack(pady=5)
+        amount_refund_entry.insert(0, billing_data[6].replace("₱", "").replace(",", ""))
+
+        # Transaction ID
+        ctk.CTkLabel(refund_window, text="Transaction ID (Optional):",
+                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
+
+        transaction_refund_entry = ctk.CTkEntry(refund_window, width=200)
+        transaction_refund_entry.pack(pady=5)
+
+        # Notes
+        ctk.CTkLabel(refund_window, text="Notes (Optional):",
+                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
+
+        notes_refund_entry = ctk.CTkTextbox(refund_window, width=300, height=60)
+        notes_refund_entry.pack(pady=5)
+
+        # Buttons
+        refund_button_frame = ctk.CTkFrame(refund_window, fg_color="transparent")
+        refund_button_frame.pack(pady=20)
+
+        def confirm_refund():
+            try:
+                amount_refunded = float(amount_refund_entry.get())
+
+                # Prepare refund data
+                refund_data = {
+                    'AMOUNT_REFUNDED': amount_refunded,
+                    'REFUND_METHOD': refund_method_var.get(),
+                    'TRANSACTION_ID': transaction_refund_entry.get() or None,
+                    'NOTES': notes_refund_entry.get("1.0", "end-1c") or None,
+                    'REFUND_DATE': datetime.now().date()
+                }
+
+                # Process refund using billing model
+                success = self.billing_model.process_refund(reservation_id, refund_data)
+
+                if success:
+                    messagebox.showinfo("Refund Processed", "Refund has been processed successfully!")
+                    refund_window.destroy()
+                    self.populate_billing_records()  # Refresh the table
+                    self.right_frame.place_forget()
+                else:
+                    messagebox.showerror("Error", "Failed to process refund.")
+
+            except ValueError:
+                messagebox.showerror("Error", "Please enter a valid amount.")
+            except Exception as e:
+                log(f"Error processing refund: {str(e)}", "ERROR")
+                messagebox.showerror("Error", f"An error occurred: {str(e)}")
+
+        ctk.CTkButton(refund_button_frame, text="Process Refund",
+                     fg_color="#dc3545", hover_color="#c82333",
+                     command=confirm_refund).pack(side="left", padx=10)
+
+        ctk.CTkButton(refund_button_frame, text="Cancel",
+                     fg_color="#28a745", hover_color="#218838",
+                     command=refund_window.destroy).pack(side="left", padx=10)

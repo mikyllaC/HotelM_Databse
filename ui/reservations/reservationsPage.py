@@ -312,12 +312,19 @@ class ReservationsPage(ctk.CTkFrame):
                                      command=lambda: self.cancel_reservation_popup(reservation_id))
         cancel_button.grid(column=1, row=0, padx=(0, 5))
 
+        # Delete button - initially disabled, will be enabled only for cancelled reservations
+        self.delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=50, height=30,
+                                     corner_radius=4, fg_color="#dc3545", hover_color="#c82333",
+                                     border_width=1, border_color=self.BORDER_COLOR,
+                                     command=lambda: self.delete_reservation(reservation_id))
+        self.delete_button.grid(column=2, row=0, padx=(0, 5))
+
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                    corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
                                    command=lambda: [self.right_frame.place_forget(),
                                                    self.treeview.selection_remove(self.treeview.selection())],
                                    font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
-        exit_button.grid(column=2, row=0, padx=(5, 10))
+        exit_button.grid(column=3, row=0, padx=(5, 10))
 
         # Bottom Header Border
         bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
@@ -399,9 +406,10 @@ class ReservationsPage(ctk.CTkFrame):
                         "Number of Children": reservation.get("NUMBER_OF_CHILDREN", "0"),
                         "Special Requests": reservation.get("NOTES", "None"),
                         "Status": reservation.get("STATUS", "Booked"),
-                        "Payment Status": reservation.get("PAYMENT_STATUS", "Pending"),
-                        "Payment Method": reservation.get("PAYMENT_METHOD", "N/A")
                     }
+
+                    # Store the reservation status in a class variable for the delete button to access
+                    self.current_reservation_status = reservation.get("STATUS", "Booked")
         except Exception as e:
             log(f"Error getting reservation details: {str(e)}", "ERROR")
             extended_info = {
@@ -500,42 +508,20 @@ class ReservationsPage(ctk.CTkFrame):
             messagebox.showerror("Error", "Could not determine which reservation to edit.")
             return
 
-        # Try to get reservation details
         try:
-            reservation = self.reservation_model.get_reservation_by_id(reservation_id)
-            if not reservation:
-                messagebox.showerror("Error", f"Reservation with ID {reservation_id} not found.")
-                return
+            from ui.reservations.editReservation import EditReservation
 
-            # For now just show message box with reservation details
-            guest_name = "Unknown Guest"
-            try:
-                guest = self.guest_model.get_guest_by_id(reservation.get("GUEST_ID"))
-                if guest:
-                    guest_name = f"{guest.get('FIRST_NAME', '')} {guest.get('LAST_NAME', '')}"
-            except:
-                pass
+            popup = ctk.CTkToplevel(self)
+            popup.title(f"Edit Reservation #{reservation_id}")
+            popup.geometry("1300x500")
+            popup.grab_set()
 
-            messagebox.showinfo("Edit Reservation",
-                              f"Editing reservation {reservation_id}\n"
-                              f"Guest: {guest_name}\n"
-                              f"Check-in: {reservation.get('CHECK_IN_DATE')}\n"
-                              f"Check-out: {reservation.get('CHECK_OUT_DATE')}\n"
-                              f"Status: {reservation.get('STATUS')}\n\n"
-                              f"This feature is coming soon.")
-
-            # In the future, you would implement something like:
-            # popup = ctk.CTkToplevel(self)
-            # popup.title("Edit Reservation")
-            # popup.geometry("1100x700")
-            # popup.grab_set()
-            # frame = EditReservation(popup, reservation)
-            # frame.pack(fill="both", expand=True)
+            frame = EditReservation(popup, reservation_id, parent_page=self)
+            frame.pack(fill="both", expand=True)
 
         except Exception as e:
-            log(f"Error getting reservation details: {str(e)}", "ERROR")
-            messagebox.showerror("Error", f"Could not load reservation details: {str(e)}")
-
+            log(f"Error opening edit reservation popup: {str(e)}")
+            messagebox.showerror("Error", f"Could not open edit window: {str(e)}")
 
     def cancel_reservation_popup(self, reservation_id=None):
         # Get reservation ID if not provided
@@ -574,6 +560,20 @@ class ReservationsPage(ctk.CTkFrame):
             except:
                 pass
 
+            # Check if the reservation has been paid and might need a refund
+            from models.billing import BillingModel
+            billing_model = BillingModel()
+            payment_status = billing_model.check_payment_status_for_reservation(reservation_id)
+
+            # If the reservation has been paid, warn about refund requirement
+            if payment_status['has_payments']:
+                messagebox.showinfo(
+                    "Payment Found",
+                    f"This reservation has payments of ${payment_status['amount']:.2f}.\n\n" +
+                    "You must process a refund in the Billing section before cancelling this reservation."
+                )
+                return
+
             # Create confirmation dialog
             cancel_window = ctk.CTkToplevel(self)
             cancel_window.title("Cancel Reservation")
@@ -582,29 +582,29 @@ class ReservationsPage(ctk.CTkFrame):
             cancel_window.configure(fg_color=self.BG_COLOR_2)
 
             ctk.CTkLabel(cancel_window, text="Cancel Reservation",
-                        font=("Roboto Condensed", 20, "bold")).pack(pady=(20, 10))
+                         font=("Roboto Condensed", 20, "bold")).pack(pady=(20, 10))
 
             ctk.CTkLabel(cancel_window,
-                        text=f"Are you sure you want to cancel the reservation for {guest_name}?",
-                        font=("Roboto Condensed", 14),
-                        wraplength=350,
-                        justify="center").pack(pady=(10, 10))
+                         text=f"Are you sure you want to cancel the reservation for {guest_name}?",
+                         font=("Roboto Condensed", 14),
+                         wraplength=350,
+                         justify="center").pack(pady=(10, 10))
 
             # Show reservation details
             details_text = f"Reservation ID: R{reservation_id}\n" \
-                         f"Check-in: {reservation.get('CHECK_IN_DATE')}\n" \
-                         f"Check-out: {reservation.get('CHECK_OUT_DATE')}\n" \
-                         f"Status: {reservation.get('STATUS')}"
+                           f"Check-in: {reservation.get('CHECK_IN_DATE')}\n" \
+                           f"Check-out: {reservation.get('CHECK_OUT_DATE')}\n" \
+                           f"Status: {reservation.get('STATUS')}"
 
             ctk.CTkLabel(cancel_window, text=details_text,
-                        font=("Roboto Condensed", 13),
-                        wraplength=350,
-                        justify="center").pack(pady=(0, 20))
+                         font=("Roboto Condensed", 13),
+                         wraplength=350,
+                         justify="center").pack(pady=(0, 20))
 
             # Reason entry
             ctk.CTkLabel(cancel_window, text="Cancellation Reason:",
-                        font=("Roboto Condensed", 14),
-                        anchor="w").pack(pady=(0, 5), padx=(40, 40), anchor="w")
+                         font=("Roboto Condensed", 14),
+                         anchor="w").pack(pady=(0, 5), padx=(40, 40), anchor="w")
 
             reason_entry = ctk.CTkEntry(cancel_window, width=320, height=30)
             reason_entry.pack(pady=(0, 20), padx=(40, 40))
@@ -634,13 +634,78 @@ class ReservationsPage(ctk.CTkFrame):
 
             # Add buttons
             ctk.CTkButton(button_frame, text="Cancel Reservation",
-                         fg_color="#e74c3c", hover_color="#c0392b",
-                         command=confirm_cancel).pack(side="left", padx=10)
+                          fg_color="#e74c3c", hover_color="#c0392b",
+                          command=confirm_cancel).pack(side="left", padx=10)
 
             ctk.CTkButton(button_frame, text="Back",
-                         fg_color="#3498db", hover_color="#2980b9",
-                         command=cancel_window.destroy).pack(side="left", padx=10)
+                          fg_color="#3498db", hover_color="#2980b9",
+                          command=cancel_window.destroy).pack(side="left", padx=10)
 
         except Exception as e:
             log(f"Error preparing cancellation dialog: {str(e)}", "ERROR")
             messagebox.showerror("Error", f"Could not load reservation details: {str(e)}")
+
+    def delete_reservation(self, reservation_id=None):
+        # Get reservation ID if not provided
+        if not reservation_id:
+            selected_item = self.treeview.selection()
+            if not selected_item:
+                return
+
+            # Get reservation ID from item tags
+            item_tags = self.treeview.item(selected_item[0], "tags")
+            for tag in item_tags:
+                if tag.startswith("res_"):
+                    try:
+                        reservation_id = int(tag[4:])
+                    except ValueError:
+                        pass
+                    break
+
+        if not reservation_id:
+            messagebox.showerror("Error", "Could not determine which reservation to delete.")
+            return
+
+        # Get the current reservation details
+        try:
+            reservation = self.reservation_model.get_reservation_by_id(reservation_id)
+            if not reservation:
+                messagebox.showerror("Error", f"Reservation with ID {reservation_id} not found.")
+                return
+
+            # Check if the reservation is cancelled
+            if reservation.get("STATUS") != "Cancelled":
+                messagebox.showwarning(
+                    "Cannot Delete Reservation",
+                    "Only cancelled reservations can be deleted.\n\n" +
+                    f"The current status is: {reservation.get('STATUS')}\n\n" +
+                    "Cancel the reservation first before attempting to delete it."
+                )
+                return
+
+            # If we get here, the reservation is cancelled, so we can proceed with deletion
+            # Confirmation dialog
+            confirm = messagebox.askyesno(
+                "Confirm Delete",
+                "Are you sure you want to delete this cancelled reservation? This action cannot be undone.",
+                icon="warning"
+            )
+
+            if confirm:
+                # Delete the reservation from the database
+                success = self.reservation_model.delete_reservation(reservation_id)
+
+                if success:
+                    # Refresh the reservations list
+                    self.refresh_data()
+
+                    # Close the right panel if it's showing this reservation
+                    self.right_frame.place_forget()
+
+                    messagebox.showinfo("Deleted", "Reservation deleted successfully.")
+                else:
+                    messagebox.showerror("Error", "Failed to delete the reservation. Please try again.")
+
+        except Exception as e:
+            log(f"Error deleting reservation: {str(e)}", "ERROR")
+            messagebox.showerror("Error", f"Could not delete reservation: {str(e)}")

@@ -229,13 +229,27 @@ class StaffMaintenancePage(ctk.CTkFrame):
                                       command=self.assign_staff_popup)
         assign_button.grid(column=1, row=0, padx=(0, 5))
 
+        # Change Password Button
+        password_button = ctk.CTkButton(right_header_frame, text="Change Password", text_color="black", width=70, height=30,
+                                       corner_radius=4, fg_color=self.BG_COLOR_2,
+                                       border_width=1, border_color=self.BORDER_COLOR,
+                                       command=self.change_password_popup)
+        password_button.grid(column=2, row=0, padx=(0, 5))
+
+        # Delete Staff Button
+        delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=60, height=30,
+                                      corner_radius=4, fg_color="#dc3545", hover_color="#c82333",
+                                      border_width=1, border_color=self.BORDER_COLOR,
+                                      command=self.delete_staff)
+        delete_button.grid(column=3, row=0, padx=(0, 5))
+
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                     corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
                                     command=lambda: [self.right_frame.place_forget(),
                                                      self.treeview.selection_remove(self.treeview.selection()),
                                                      setattr(self, 'current_employee_index', None)],
                                     font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
-        exit_button.grid(column=2, row=0, padx=(5, 10))
+        exit_button.grid(column=4, row=0, padx=(5, 10))
 
         # Bottom Header Border
         bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
@@ -348,7 +362,7 @@ class StaffMaintenancePage(ctk.CTkFrame):
 
             popup = ctk.CTkToplevel(self)
             popup.title("Assign Staff")
-            popup.geometry("670x700")
+            popup.geometry("670x600")
             popup.grab_set()
 
             frame = AssignStaffFrame(parent_popup=popup, parent_page=self, employee_id=employee_id)
@@ -356,6 +370,50 @@ class StaffMaintenancePage(ctk.CTkFrame):
         else:
             messagebox.showwarning("No Selection", "Please select a staff member to assign.")
             log("Assign Staff: No staff member selected for assignment.")
+
+    def change_password_popup(self):
+        from ui.staff.changePassword import ChangePasswordFrame
+
+        selected_item = self.treeview.selection()
+        if selected_item:
+            employee_id = selected_item[0]
+
+            popup = ctk.CTkToplevel(self)
+            popup.title("Change Password")
+            popup.geometry("500x400")
+            popup.grab_set()
+
+            frame = ChangePasswordFrame(parent_popup=popup, parent_page=self, employee_id=employee_id)
+            frame.pack(fill="both", expand=True)
+        else:
+            messagebox.showwarning("No Selection", "Please select a staff member to change password.")
+            log("Change Password: No staff member selected for password change.")
+
+    def delete_staff(self):
+        selected_item = self.treeview.selection()
+        if selected_item:
+            employee_id = selected_item[0]
+            employee_info = self.employee_model.get_employee_details(employee_id)
+
+            if employee_info:
+                confirm = messagebox.askyesno("Confirm Deletion",
+                                               f"Are you sure you want to delete {employee_info['FIRST_NAME']} {employee_info['LAST_NAME']}? This action cannot be undone.")
+                if confirm:
+                    # Call the model method to delete the employee
+                    success = self.employee_model.delete_employee(employee_id)
+
+                    if success:
+                        messagebox.showinfo("Success", "Staff member deleted successfully.")
+                        # Update the employee data and treeview
+                        self.populate_employee_data()
+                        self.right_frame.place_forget()  # Hide the right frame
+                    else:
+                        messagebox.showerror("Error", "Failed to delete staff member. Please try again.")
+            else:
+                messagebox.showwarning("No Data", "No staff member data found for the selected item.")
+        else:
+            messagebox.showwarning("No Selection", "Please select a staff member to delete.")
+            log("Delete Staff: No staff member selected for deletion.")
 
 
 # ========== Preview Frame as App ==========
