@@ -1,26 +1,8 @@
-#import datetime
-#import sqlite3
-
 from utils.helpers import log, get_connection
 
 
 def main():
     guest_model = GuestModel()
-    sample_guest_data = {
-        "FIRST_NAME": "Municht",
-        "LAST_NAME": "Esquivel",
-        "CONTACT_NUMBER": "09321234567",
-        "EMAIL": "municht.esquivel@example.com",
-        "ADDRESS_LINE1": "17 Amethyst st, Fern Village",
-        "ADDRESS_LINE2": "Pasong Tamo",
-        "CITY": "Quezon City",
-        "STATE": "NCR",
-        "POSTAL_CODE": "1107",
-        "COUNTRY": "Philippines",
-        "STATUS": "Checked Out",
-        "EMPLOYEE_ID": "SM0001"
-    }
-    guest_model.add_guest(sample_guest_data)
 
 
 class GuestModel:

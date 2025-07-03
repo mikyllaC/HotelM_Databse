@@ -7,21 +7,6 @@ from utils.helpers import log, get_connection
 
 def main():
     employee_model = EmployeeModel()
-    sample_employee_data = {
-        "FIRST_NAME": "Samuel",
-        "LAST_NAME": "Muralid",
-        "GENDER": "Male",
-        "CONTACT_NUMBER": "09171234567",
-        "EMAIL": "samuel.muralid@example.com",
-        "DATE_OF_BIRTH": "1985-07-15",  # Format: YYYY-MM-DD
-        "ADDRESS": "123 Executive Lane, Makati City",
-        "POSITION": "CEO",
-        "HIRE_DATE": datetime.date.today().isoformat(),  # Today's date
-        "SALARY": 250000.00,
-        "ASSIGNED_TO": "Floor 1",
-        "STATUS": "active"
-    }
-    employee_model.add_employee(sample_employee_data)
 
 
 class EmployeeModel():
@@ -42,7 +27,7 @@ class EmployeeModel():
                     EMAIL TEXT NOT NULL UNIQUE,
                     DATE_OF_BIRTH DATE NOT NULL,
                     ADDRESS TEXT,
-                    POSITION TEXT NOT NULL,
+                    POSITION TEXT,
                     HIRE_DATE DATE,
                     SALARY REAL,
                     ASSIGNED_TO TEXT,

@@ -333,8 +333,6 @@ class SignupScreen(ctk.CTkFrame):
             errors.append("Contact Number is required")
         if not self.email_entry.get().strip():
             errors.append("Email is required")
-        if not self.address_entry.get().strip():
-            errors.append("Address is required")
         if self.position_dropdown.get() == "Select Position":
             errors.append("Position is required")
 
@@ -378,11 +376,11 @@ class SignupScreen(ctk.CTkFrame):
             "CONTACT_NUMBER": self.contact_entry.get().strip(),
             "EMAIL": self.email_entry.get().strip(),
             "DATE_OF_BIRTH": self.dob_entry.get().strip(),
-            "ADDRESS": self.address_entry.get().strip(),
+            "ADDRESS": "Not provided",  # Default value since field was removed
             "POSITION": self.position_dropdown.get(),
             "HIRE_DATE": datetime.date.today().isoformat(),
-            "SALARY": float(self.salary_entry.get().strip()) if self.salary_entry.get().strip() else 0.0,
-            "ASSIGNED_TO": self.assigned_entry.get().strip() if self.assigned_entry.get().strip() else "Unassigned",
+            "SALARY": 0.0,  # Default value since field was removed
+            "ASSIGNED_TO": "Unassigned",  # Default value since field was removed
             "STATUS": "Available"
         }
 
