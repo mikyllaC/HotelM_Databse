@@ -219,7 +219,13 @@ class AddGuestFrame(ctk.CTkFrame):
             self.guest_model.add_guest(guest_data)
             messagebox.showinfo("Success", "Guest added successfully!")
             if self.parent_page:
-                self.parent_page.populate_guest_data()
+                # Check which refresh method exists on the parent page
+                if hasattr(self.parent_page, 'populate_guest_data'):
+                    self.parent_page.populate_guest_data()
+                elif hasattr(self.parent_page, 'refresh_guests'):
+                    self.parent_page.refresh_guests()
+                else:
+                    log(f"Warning: parent_page doesn't have a method to refresh guests")
             self.master.destroy()
         except Exception as e:
             log(f"Error adding guest: {str(e)}")
@@ -252,5 +258,3 @@ class AddGuestFrame(ctk.CTkFrame):
             if isinstance(entry, ctk.CTkEntry):
                 entry.delete(0, 'end')
         self.entries["entry_status"].set("Checked Out")  # Resetting to default value
-
-

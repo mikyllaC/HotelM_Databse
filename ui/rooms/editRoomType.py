@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import messagebox, filedialog, simpledialog
+from tkinter import messagebox, filedialog
 import os
 import shutil
 
@@ -8,7 +8,7 @@ from ui.components.customDropdown import CustomDropdown
 from utils.helpers import log
 
 
-class AddRoomTypeFrame(ctk.CTkFrame):
+class EditRoomTypeFrame(ctk.CTkFrame):
     BG_COLOR_1 = "#F7F7F7"
     BG_COLOR_2 = "white"
     FONT_HEADER = ("Roboto Condensed", 24)
@@ -24,28 +24,66 @@ class AddRoomTypeFrame(ctk.CTkFrame):
     SEPERATOR_COLOR = "#D3D3D3"
     PADX_LABEL = (20, 20)
 
-    def __init__(self, parent_popup, parent_page=None):
+    def __init__(self, parent_popup, room_type_id, parent_page=None):
         super().__init__(parent_popup)
         self.configure(fg_color=self.BG_COLOR_2)
         self.parent_page = parent_page
         self.room_model = RoomModel()
+        self.room_type_id = room_type_id
+        self.room_type_data = self.room_model.get_room_type_by_id(room_type_id)
+
+        if not self.room_type_data:
+            messagebox.showerror("Error", f"Room type with ID {room_type_id} not found")
+            self.master.destroy()
+            return
 
         self.entries = {}
         self.required_fields = ["entry_type_name", "entry_bed_type", "entry_base_adults", "entry_extra_adults",
                                 "entry_max_occupancy"]
         self.numeric_fields = ["entry_base_adults", "entry_extra_adults", "entry_max_occupancy"]
         self.bed_types = ["Single", "Double", "Queen", "King", "Twin"]
-        self.image_path = None
+        self.image_path = self.room_type_data.get("IMAGE")
         self.image_label = None
         self.amenities = []
         self.amenity_map = {}  # Store amenity name -> ID mapping
+        self.selected_amenities = []
 
         # Load amenities and create mapping
         for amenity in self.room_model.get_all_amenities():
             self.amenities.append(amenity['AMENITY_NAME'])
             self.amenity_map[amenity['AMENITY_NAME']] = amenity['AMENITY_ID']
 
+        # Get currently selected amenities for this room type
+        self.selected_amenities = self.room_model.get_amenities_for_room_type(room_type_id)
+
         self.create_widgets()
+        self.load_room_type_data()
+
+    def load_room_type_data(self):
+        """Load the room type data into the form fields"""
+        if not self.room_type_data:
+            return
+
+        # Populate entry fields
+        self.entries["entry_type_name"].insert(0, self.room_type_data["TYPE_NAME"])
+        self.bed_type_dropdown.set(self.room_type_data["BED_TYPE"])
+        self.entries["entry_base_adults"].insert(0, str(self.room_type_data["BASE_ADULT_NUM"]))
+        self.entries["entry_base_children"].insert(0, str(self.room_type_data["BASE_CHILD_NUM"]))
+        self.entries["entry_extra_adults"].insert(0, str(self.room_type_data["EXTRA_ADULT_NUM"]))
+        self.entries["entry_extra_children"].insert(0, str(self.room_type_data["EXTRA_CHILD_NUM"]))
+        self.entries["entry_max_occupancy"].insert(0, str(self.room_type_data["MAX_OCCUPANCY"]))
+
+        if self.room_type_data.get("DESCRIPTION"):
+            self.entries["entry_description"].insert(0, self.room_type_data["DESCRIPTION"])
+
+        # Set image info
+        if self.room_type_data.get("IMAGE"):
+            self.image_path = self.room_type_data["IMAGE"]
+            self.image_label.configure(text=self.image_path)
+
+        # Set selected amenities
+        if self.selected_amenities:
+            self.amenity_dropdown.set(", ".join(self.selected_amenities))
 
 
     def create_widgets(self):
@@ -53,7 +91,8 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         header_frame = ctk.CTkFrame(self, fg_color=self.BG_COLOR_2, corner_radius=0)
         header_frame.pack(fill="x")
 
-        header = ctk.CTkLabel(header_frame, text="Add Room Type", font=self.FONT_HEADER, text_color="black")
+        header = ctk.CTkLabel(header_frame, text=f"Edit Room Type: {self.room_type_data['TYPE_NAME']}",
+                             font=self.FONT_HEADER, text_color="black")
         header.pack(pady=(20, 20))
 
         bottom_border = ctk.CTkFrame(header_frame, height=1, fg_color=self.SEPERATOR_COLOR, border_width=1)
@@ -118,8 +157,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         frame.grid(row=row, column=1, sticky="w", padx=(0, 20), pady=(10, 0))
         entry = ctk.CTkEntry(frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT, fg_color=self.BG_COLOR_2,
-                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR,
-                             placeholder_text="0")
+                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR)
         entry.grid(row=0, column=0, sticky="w")
         label_entry = ctk.CTkLabel(frame, text="Included children in base price", font=self.FONT_ENTRY_LABEL,
                                    text_color=self.TEXT_COLOR_ENTRY)
@@ -133,8 +171,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         frame = ctk.CTkFrame(left_frame, fg_color="transparent")
         frame.grid(row=row, column=1, sticky="w", padx=(0, 20), pady=(10, 0))
         entry = ctk.CTkEntry(frame, width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT, fg_color=self.BG_COLOR_2,
-                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR,
-                             placeholder_text="0")
+                             border_width=self.BORDER_WIDTH, border_color=self.BORDER_COLOR)
         entry.grid(row=0, column=0, sticky="w")
         label_entry = ctk.CTkLabel(frame, text="Max additional adults (extra charge)", font=self.FONT_ENTRY_LABEL,
                                    text_color=self.TEXT_COLOR_ENTRY)
@@ -189,7 +226,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         # ========== Image Upload ==========
         label = ctk.CTkLabel(right_frame, text="Image", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
         label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        upload_btn = ctk.CTkButton(right_frame, text="Upload Image", command=self.upload_image)
+        upload_btn = ctk.CTkButton(right_frame, text="Change Image", command=self.upload_image)
         upload_btn.grid(row=row, column=1, sticky="w", padx=(0, 20))
         row += 1
         self.image_label = ctk.CTkLabel(right_frame, text="No image selected", font=("Roboto", 10),
@@ -218,7 +255,7 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
         note_label = ctk.CTkLabel(note_frame,
                                  text="Note: Room rates are managed separately in the Room Rates section.\n"
-                                      "After creating this room type, you can set up rates in the\n"
+                                      "After updating this room type, check the rates in the\n"
                                       "Room Management → Room Rates tab.",
                                  font=("Roboto", 12),
                                  text_color="#1e40af",
@@ -229,15 +266,15 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         # ========== Button Frame ==========
         button_frame = ctk.CTkFrame(self, fg_color="transparent")
         button_frame.pack(pady=(10, 20))
-        # ========== Submit Button ==========
-        self.submit_button = ctk.CTkButton(button_frame, text="Add", command=self.on_submit,
-                                           height=30, width=80)
-        self.submit_button.grid(row=0, column=0, padx=(0, 10), sticky="w")
-        # ========== Reset Button ==========
-        self.reset_button = ctk.CTkButton(button_frame, text="Reset", command=self.reset_form,
+        # ========== Save Button ==========
+        self.save_button = ctk.CTkButton(button_frame, text="Save Changes", command=self.on_submit,
+                                           height=30, width=120)
+        self.save_button.grid(row=0, column=0, padx=(0, 10), sticky="w")
+        # ========== Cancel Button ==========
+        self.cancel_button = ctk.CTkButton(button_frame, text="Cancel", command=self.master.destroy,
                                           height=30, width=80, fg_color=self.BG_COLOR_2, text_color="black",
                                           border_width=1, border_color=self.BORDER_COLOR)
-        self.reset_button.grid(row=0, column=1, sticky="w")
+        self.cancel_button.grid(row=0, column=1, sticky="w")
 
 
     def upload_image(self):
@@ -270,8 +307,8 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             self.image_path = filename  # Store only the filename
             self.image_label.configure(text=filename)
         else:
-            self.image_path = None
-            self.image_label.configure(text="No image selected")
+            # If no new image selected, keep the existing one
+            pass
 
 
     def add_room_amenity_popup(self):
@@ -321,7 +358,8 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             return
 
         # Collect data from entries
-        room_type_data = {
+        updated_room_type_data = {
+            "ROOM_TYPE_ID": self.room_type_id,
             "TYPE_NAME": self.entries["entry_type_name"].get().strip(),
             "BED_TYPE": self.bed_type_dropdown.get(),
             "BASE_ADULT_NUM": int(self.entries["entry_base_adults"].get().strip()),
@@ -339,13 +377,17 @@ class AddRoomTypeFrame(ctk.CTkFrame):
         selected_amenities = self.amenity_dropdown.get()
 
         try:
-            log(f"[DEBUG] Attempting to add room type with data: {room_type_data}")
-            room_type_id = self.room_model.add_room_type(room_type_data)
-            log(f"Room type added successfully with ID: {room_type_id}")
+            log(f"[DEBUG] Attempting to update room type with data: {updated_room_type_data}")
+            # Update room type in database
+            self.room_model.update_room_type(updated_room_type_data)
+            log(f"Room type updated successfully with ID: {self.room_type_id}")
 
-            # Handle amenities - save to ROOM_TYPE_AMENITY_MAP
+            # Handle amenities - first remove all existing mappings
+            self.room_model.delete_amenities_for_room_type(self.room_type_id)
+
+            # Then add the new mappings
             if selected_amenities:
-                log(f"Adding amenities to room type: {selected_amenities}")
+                log(f"Updating amenities for room type: {selected_amenities}")
 
                 # If it's a comma-separated string, split it
                 if isinstance(selected_amenities, str):
@@ -357,24 +399,24 @@ class AddRoomTypeFrame(ctk.CTkFrame):
                 for amenity_name in amenity_list:
                     if amenity_name in self.amenity_map:
                         amenity_id = self.amenity_map[amenity_name]
-                        self.room_model.assign_amenity_to_room_type(room_type_id, amenity_id)
-                        log(f"Assigned amenity '{amenity_name}' (ID: {amenity_id}) to room type ID: {room_type_id}")
+                        self.room_model.assign_amenity_to_room_type(self.room_type_id, amenity_id)
+                        log(f"Assigned amenity '{amenity_name}' (ID: {amenity_id}) to room type ID: {self.room_type_id}")
                     else:
                         log(f"Warning: Amenity '{amenity_name}' not found in amenity map")
 
             # Update parent first before showing message
             if self.parent_page:
-                self.parent_page.refresh_room_types(selected_type=room_type_data["TYPE_NAME"])
+                if hasattr(self.parent_page, 'refresh_room_types'):
+                    self.parent_page.refresh_room_types(selected_type=updated_room_type_data["TYPE_NAME"])
 
                 # Mark related tabs for refresh if parent has room management page
                 if hasattr(self.parent_page, 'main_page') and hasattr(self.parent_page.main_page, 'mark_for_refresh'):
-                    # When adding a room type, mark rooms and amenities tabs for refresh
+                    # When updating a room type, mark rooms and amenities tabs for refresh
                     self.parent_page.main_page.mark_for_refresh('rooms', 'amenities', 'room_rates')
 
-            # Show success message with note about setting up rates
+            # Show success message
             messagebox.showinfo("Success",
-                              f"Room type '{room_type_data['TYPE_NAME']}' added successfully!\n\n"
-                              f"Note: Don't forget to set up room rates in the Room Management → Room Rates tab.")
+                              f"Room type '{updated_room_type_data['TYPE_NAME']}' updated successfully!")
 
             # Focus on parent after message is dismissed
             if self.parent_page and hasattr(self.parent_page, 'master'):
@@ -391,25 +433,8 @@ class AddRoomTypeFrame(ctk.CTkFrame):
             # Destroy current window
             self.master.destroy()
         except Exception as e:
-            log(f"Error adding room type: {e}")
-            messagebox.showerror("Error", f"Failed to add room type: {e}")
-
-
-    def reset_form(self):
-        log("Resetting form fields")
-
-        # Reset regular entry fields
-        for entry in self.entries.values():
-            if hasattr(entry, "delete"):
-                entry.delete(0, "end")
-
-        self.bed_type_dropdown.set("")
-        self.amenity_dropdown.set("")
-
-        # Reset image
-        self.image_path = None
-        if self.image_label:
-            self.image_label.configure(text="No image selected")
+            log(f"Error updating room type: {e}")
+            messagebox.showerror("Error", f"Failed to update room type: {e}")
 
 
     def refresh_amenities(self, selected_amenity=None):
@@ -427,4 +452,16 @@ class AddRoomTypeFrame(ctk.CTkFrame):
 
         # Set the selected amenity if provided
         if selected_amenity and selected_amenity in self.amenities and hasattr(self, 'amenity_dropdown'):
-            self.amenity_dropdown.set(selected_amenity)
+            # Keep existing selections and add the new one
+            current = self.amenity_dropdown.get()
+            if current:
+                if isinstance(current, str):
+                    current_list = [a.strip() for a in current.split(',')]
+                else:
+                    current_list = current
+
+                if selected_amenity not in current_list:
+                    current_list.append(selected_amenity)
+                    self.amenity_dropdown.set(", ".join(current_list))
+            else:
+                self.amenity_dropdown.set(selected_amenity)

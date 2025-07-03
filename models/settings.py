@@ -16,21 +16,6 @@ class SettingsModel:
         with get_connection() as conn:
             cursor = conn.cursor()
 
-            # Create SYSTEM_SETTINGS table for general application settings
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS SYSTEM_SETTINGS (
-                    SETTING_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    SETTING_KEY TEXT NOT NULL UNIQUE,
-                    SETTING_VALUE TEXT NOT NULL,
-                    SETTING_TYPE TEXT DEFAULT 'TEXT',
-                    DESCRIPTION TEXT,
-                    IS_ACTIVE BOOLEAN DEFAULT 1,
-                    CREATED_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UPDATED_DATE TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
-            # Create BILLING_SETTINGS table for billing-specific configurations
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS BILLING_SETTINGS (
                     BILLING_SETTING_ID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,18 +33,8 @@ class SettingsModel:
             log("Settings tables created successfully.")
 
     def create_default_settings(self):
-        """Create default general and billing settings"""
+        """Create default billing settings"""
         try:
-            # Default general settings
-            default_general_settings = [
-                ('CHECK_IN_TIME', '15:00', 'TIME', 'Standard check-in time'),
-                ('CHECK_OUT_TIME', '11:00', 'TIME', 'Standard check-out time'),
-                ('BUSINESS_HOURS_START', '06:00', 'TIME', 'Business hours start time'),
-                ('BUSINESS_HOURS_END', '23:00', 'TIME', 'Business hours end time'),
-                ('CANCELLATION_HOURS', '24', 'INTEGER', 'Hours before check-in for free cancellation'),
-                ('MAX_OCCUPANCY_BUFFER', '2', 'INTEGER', 'Maximum additional guests allowed')
-            ]
-
             # Default billing settings
             default_billing_settings = [
                 ('TAX_RATE', '0.12', 'DECIMAL', 'Default tax rate applied to all transactions (12%)'),
@@ -83,10 +58,6 @@ class SettingsModel:
                 ('PAYMENT_TOLERANCE', '0.01', 'DECIMAL', 'Tolerance for payment amount differences (rounding)')
             ]
 
-            # Insert general settings
-            for key, value, type_, description in default_general_settings:
-                self.add_or_update_general_setting(key, value, type_, description)
-
             # Insert billing settings
             for key, value, type_, description in default_billing_settings:
                 self.add_or_update_billing_setting(key, value, type_, description)
@@ -95,23 +66,6 @@ class SettingsModel:
 
         except Exception as e:
             log(f"Error creating default settings: {str(e)}", "ERROR")
-
-    def add_or_update_general_setting(self, key, value, setting_type='TEXT', description=None):
-        """Add or update a general setting"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT OR REPLACE INTO SYSTEM_SETTINGS 
-                    (SETTING_KEY, SETTING_VALUE, SETTING_TYPE, DESCRIPTION, UPDATED_DATE)
-                    VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-                """, (key, str(value), setting_type, description))
-                conn.commit()
-                log(f"General setting {key} updated to {value}")
-                return True
-        except Exception as e:
-            log(f"Error updating general setting {key}: {str(e)}", "ERROR")
-            return False
 
     def add_or_update_billing_setting(self, key, value, setting_type='DECIMAL', description=None):
         """Add or update a billing setting"""
@@ -129,26 +83,6 @@ class SettingsModel:
         except Exception as e:
             log(f"Error updating billing setting {key}: {str(e)}", "ERROR")
             return False
-
-    def get_general_setting(self, key, default_value=None):
-        """Get a general setting value"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT SETTING_VALUE, SETTING_TYPE 
-                    FROM SYSTEM_SETTINGS 
-                    WHERE SETTING_KEY = ? AND IS_ACTIVE = 1
-                """, (key,))
-                result = cursor.fetchone()
-
-                if result:
-                    value, type_ = result
-                    return self._convert_setting_value(value, type_)
-                return default_value
-        except Exception as e:
-            log(f"Error getting general setting {key}: {str(e)}", "ERROR")
-            return default_value
 
     def get_billing_setting(self, key, default_value=None):
         """Get a billing setting value"""
@@ -169,22 +103,6 @@ class SettingsModel:
         except Exception as e:
             log(f"Error getting billing setting {key}: {str(e)}", "ERROR")
             return default_value
-
-    def get_all_general_settings(self):
-        """Get all general settings"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT SETTING_KEY, SETTING_VALUE, SETTING_TYPE, DESCRIPTION
-                    FROM SYSTEM_SETTINGS
-                    WHERE IS_ACTIVE = 1
-                    ORDER BY SETTING_KEY
-                """)
-                return cursor.fetchall()
-        except Exception as e:
-            log(f"Error getting general settings: {str(e)}", "ERROR")
-            return []
 
     def get_all_billing_settings(self):
         """Get all billing settings"""
@@ -213,14 +131,7 @@ class SettingsModel:
             with get_connection() as conn:
                 cursor = conn.cursor()
 
-                if table == 'general':
-                    cursor.execute(f"""
-                        SELECT SETTING_KEY, SETTING_VALUE, SETTING_TYPE 
-                        FROM SYSTEM_SETTINGS 
-                        WHERE SETTING_KEY IN ({placeholders}) AND IS_ACTIVE = 1
-                    """, keys)
-                else:
-                    cursor.execute(f"""
+                cursor.execute(f"""
                         SELECT SETTING_KEY, SETTING_VALUE, SETTING_TYPE 
                         FROM BILLING_SETTINGS 
                         WHERE SETTING_KEY IN ({placeholders}) AND IS_ACTIVE = 1
@@ -234,29 +145,6 @@ class SettingsModel:
         except Exception as e:
             log(f"Error getting settings by keys: {str(e)}", "ERROR")
             return {}
-
-    def update_multiple_general_settings(self, settings_dict):
-        """Update multiple general settings at once"""
-        try:
-            success_count = 0
-            for key, value_data in settings_dict.items():
-                if isinstance(value_data, dict):
-                    value = value_data.get('value')
-                    setting_type = value_data.get('type', 'TEXT')
-                    description = value_data.get('description')
-                else:
-                    value = value_data
-                    setting_type = self._infer_setting_type(value)
-                    description = None
-
-                if self.add_or_update_general_setting(key, value, setting_type, description):
-                    success_count += 1
-
-            log(f"Updated {success_count}/{len(settings_dict)} general settings")
-            return success_count == len(settings_dict)
-        except Exception as e:
-            log(f"Error updating multiple general settings: {str(e)}", "ERROR")
-            return False
 
     def update_multiple_billing_settings(self, settings_dict):
         """Update multiple billing settings at once"""
@@ -279,23 +167,6 @@ class SettingsModel:
             return success_count == len(settings_dict)
         except Exception as e:
             log(f"Error updating multiple billing settings: {str(e)}", "ERROR")
-            return False
-
-    def delete_general_setting(self, key):
-        """Delete a general setting (set as inactive)"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE SYSTEM_SETTINGS 
-                    SET IS_ACTIVE = 0, UPDATED_DATE = CURRENT_TIMESTAMP
-                    WHERE SETTING_KEY = ?
-                """, (key,))
-                conn.commit()
-                log(f"General setting {key} deleted")
-                return cursor.rowcount > 0
-        except Exception as e:
-            log(f"Error deleting general setting {key}: {str(e)}", "ERROR")
             return False
 
     def delete_billing_setting(self, key):
@@ -325,13 +196,6 @@ class SettingsModel:
                     cursor.execute("DELETE FROM BILLING_SETTINGS")
                     conn.commit()
 
-            if category == 'general' or category is None:
-                # Reset general settings
-                with get_connection() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("DELETE FROM SYSTEM_SETTINGS")
-                    conn.commit()
-
             # Recreate defaults
             self.create_default_settings()
             log(f"Settings reset to defaults for category: {category or 'all'}")
@@ -344,19 +208,9 @@ class SettingsModel:
         """Export all settings to a dictionary"""
         try:
             export_data = {
-                'general_settings': {},
                 'billing_settings': {},
                 'export_date': datetime.now().isoformat()
             }
-
-            # Export general settings
-            general_settings = self.get_all_general_settings()
-            for key, value, type_, description in general_settings:
-                export_data['general_settings'][key] = {
-                    'value': value,
-                    'type': type_,
-                    'description': description
-                }
 
             # Export billing settings
             billing_settings = self.get_all_billing_settings()
@@ -375,16 +229,12 @@ class SettingsModel:
     def import_settings(self, settings_data):
         """Import settings from a dictionary"""
         try:
-            general_success = True
             billing_success = True
-
-            if 'general_settings' in settings_data:
-                general_success = self.update_multiple_general_settings(settings_data['general_settings'])
 
             if 'billing_settings' in settings_data:
                 billing_success = self.update_multiple_billing_settings(settings_data['billing_settings'])
 
-            return general_success and billing_success
+            return billing_success
         except Exception as e:
             log(f"Error importing settings: {str(e)}", "ERROR")
             return False

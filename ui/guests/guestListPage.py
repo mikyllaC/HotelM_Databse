@@ -246,13 +246,21 @@ class GuestListPage(ctk.CTkFrame):
                                     border_width=1, border_color=self.BORDER_COLOR,
                                     command=self.edit_guest_popup)
         edit_button.grid(column=0, row=0, padx=(0, 5))
+
+        # Delete Button - new
+        delete_button = ctk.CTkButton(right_header_frame, text="Delete", text_color="white", width=50, height=30,
+                                      corner_radius=4, fg_color="#dc3545", hover_color="#c82333",
+                                      border_width=1, border_color=self.BORDER_COLOR,
+                                      command=self.handle_delete_guest)
+        delete_button.grid(column=1, row=0, padx=(0, 5))
+
         exit_button = ctk.CTkButton(right_header_frame, text="X", text_color="black", width=10, height=10,
                                     corner_radius=4, fg_color=self.BG_COLOR_2, border_width=0,
                                     command=lambda: [self.right_frame.place_forget(),
                                                      self.treeview.selection_remove(self.treeview.selection()),
                                                      setattr(self, 'current_guest_index', None)],
                                     font=("Grizzly BT", 16), hover_color=self.BG_COLOR_2)
-        exit_button.grid(column=1, row=0, padx=(5, 10))
+        exit_button.grid(column=2, row=0, padx=(5, 10))
 
         # Bottom Header Border
         bottom_border = ctk.CTkFrame(header_frame, height=0, fg_color="#D3D3D3", border_width=1)
@@ -360,6 +368,35 @@ class GuestListPage(ctk.CTkFrame):
         else:
             messagebox.showwarning("No Selection", "Please select a guest to edit.")
             log("Edit Guest: No guest selected for editing.")
+
+
+    def handle_delete_guest(self):
+        selected_item = self.treeview.selection()
+        if not selected_item:
+            messagebox.showwarning("No Selection", "Please select a guest to delete.")
+            return
+
+        guest_id = selected_item[0]
+        guest_info = self.guest_model.get_guest_by_id(int(guest_id))
+
+        if guest_info:
+            confirm = messagebox.askyesno("Confirm Delete",
+                                           f"Are you sure you want to delete guest '{guest_info['FIRST_NAME']} {guest_info['LAST_NAME']}'?",
+                                           icon="warning")
+            if confirm:
+                # Call the delete method and get success status and message
+                success, message = self.guest_model.delete_guest(int(guest_id))
+
+                if success:
+                    # Only if deletion was successful
+                    self.populate_guest_data()
+                    self.right_frame.place_forget()
+                    messagebox.showinfo("Deleted", "Guest deleted successfully.")
+                else:
+                    # Show error message with the reason deletion failed
+                    messagebox.showerror("Cannot Delete Guest", message)
+        else:
+            messagebox.showerror("Error", "Guest not found.")
 
 
 if __name__ == "__main__":

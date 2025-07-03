@@ -376,9 +376,6 @@ class BillingModel:
             from models.settings import SettingsModel
             settings = SettingsModel()
 
-            standard_checkin = settings.get_general_setting('CHECK_IN_TIME', '15:00')
-            standard_checkout = settings.get_general_setting('CHECK_OUT_TIME', '11:00')
-
             # For now, we'll apply fees based on settings since we don't have actual check-in/out times
             # In a full implementation, you'd compare actual times with standard times
 
@@ -1021,5 +1018,268 @@ class BillingModel:
             log(f"Error getting detailed charge breakdown: {str(e)}", "ERROR")
             return None
 
-if __name__ == "__main__":
-    main()
+    def is_reservation_paid(self, reservation_id):
+        """
+        Check if a reservation has been fully paid.
+        Returns True if paid in full, False otherwise.
+        """
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+
+                # First check if invoice exists
+                cursor.execute("""
+                    SELECT INVOICE_ID, TOTAL_AMOUNT, STATUS 
+                    FROM INVOICE 
+                    WHERE RESERVATION_ID = ?
+                """, (reservation_id,))
+
+                invoice = cursor.fetchone()
+                if not invoice:
+                    return False  # No invoice means not paid
+
+                invoice_id, total_amount, status = invoice
+
+                # If invoice status is 'Paid', it's already considered paid
+                if status == 'Paid':
+                    return True
+
+                # Check total payment amount
+                cursor.execute("""
+                    SELECT SUM(AMOUNT_PAID) 
+                    FROM PAYMENT 
+                    WHERE INVOICE_ID = ? AND STATUS = 'Completed'
+                """, (invoice_id,))
+
+                total_paid = cursor.fetchone()[0] or 0
+
+                # Consider it paid if payment equals or exceeds the total amount
+                return total_paid >= total_amount
+
+        except Exception as e:
+            log(f"Error checking if reservation is paid: {str(e)}", "ERROR")
+            return False
+
+    def refund_payment(self, payment_id, refund_amount, refund_reason=None, processed_by=None):
+        """Process a refund for a payment"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Get the payment details first
+                cursor.execute("SELECT INVOICE_ID, AMOUNT_PAID, PAYMENT_METHOD, STATUS FROM PAYMENT WHERE PAYMENT_ID = ?", (payment_id,))
+                payment = cursor.fetchone()
+
+                if not payment:
+                    log(f"Payment {payment_id} not found", "ERROR")
+                    return False, "Payment not found"
+
+                invoice_id, original_amount, payment_method, status = payment
+
+                # Validate refund amount
+                if refund_amount <= 0:
+                    return False, "Refund amount must be positive"
+
+                if refund_amount > original_amount:
+                    return False, f"Refund amount (${refund_amount:.2f}) exceeds original payment (${original_amount:.2f})"
+
+                if status == 'Refunded':
+                    return False, "This payment has already been refunded"
+
+                # Record the refund transaction
+                cursor.execute("""
+                    INSERT INTO PAYMENT (
+                        INVOICE_ID, PAYMENT_DATE, AMOUNT_PAID, PAYMENT_METHOD,
+                        TRANSACTION_ID, REFERENCE_NUMBER, STATUS, NOTES, PROCESSED_BY
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    invoice_id,
+                    datetime.now().date(),
+                    -refund_amount,  # Negative amount to indicate refund
+                    f"Refund via {payment_method}",
+                    None,
+                    None,
+                    'Refunded',
+                    refund_reason or f"Refund for payment #{payment_id}",
+                    processed_by
+                ))
+
+                # Update original payment status
+                cursor.execute("""
+                    UPDATE PAYMENT 
+                    SET STATUS = 'Refunded', NOTES = COALESCE(NOTES, '') || ' | Refunded: ' || ?
+                    WHERE PAYMENT_ID = ?
+                """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), payment_id))
+
+                # Update invoice status based on total payments after refund
+                cursor.execute("""
+                    SELECT TOTAL_AMOUNT, COALESCE(SUM(p.AMOUNT_PAID), 0) as TOTAL_PAID
+                    FROM INVOICE i
+                    LEFT JOIN PAYMENT p ON i.INVOICE_ID = p.INVOICE_ID
+                    WHERE i.INVOICE_ID = ?
+                    GROUP BY i.INVOICE_ID, i.TOTAL_AMOUNT
+                """, (invoice_id,))
+
+                result = cursor.fetchone()
+                if result:
+                    total_amount, total_paid = result
+
+                    if total_paid >= total_amount:
+                        new_status = 'Paid'
+                    elif total_paid > 0:
+                        new_status = 'Partial'
+                    else:
+                        new_status = 'Pending'
+
+                    cursor.execute("""
+                        UPDATE INVOICE 
+                        SET STATUS = ?, UPDATED_DATE = CURRENT_TIMESTAMP
+                        WHERE INVOICE_ID = ?
+                    """, (new_status, invoice_id))
+
+                conn.commit()
+                log(f"Refund of ${refund_amount:.2f} processed for payment {payment_id}, invoice {invoice_id}")
+                return True, f"Refund of ${refund_amount:.2f} processed successfully"
+
+        except Exception as e:
+            log(f"Error processing refund: {str(e)}", "ERROR")
+            return False, f"Error processing refund: {str(e)}"
+
+    def process_refund(self, reservation_id, refund_data):
+        """Process a refund for a reservation's invoice"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Get the invoice for this reservation
+                cursor.execute("""
+                    SELECT INVOICE_ID, TOTAL_AMOUNT
+                    FROM INVOICE
+                    WHERE RESERVATION_ID = ?
+                """, (reservation_id,))
+
+                invoice_result = cursor.fetchone()
+                if not invoice_result:
+                    log(f"No invoice found for reservation {reservation_id}", "ERROR")
+                    return False
+
+                invoice_id, total_amount = invoice_result
+
+                # Get the payments for this invoice
+                cursor.execute("""
+                    SELECT PAYMENT_ID, AMOUNT_PAID, PAYMENT_METHOD
+                    FROM PAYMENT
+                    WHERE INVOICE_ID = ? AND STATUS = 'Completed'
+                    ORDER BY PAYMENT_DATE DESC
+                """, (invoice_id,))
+
+                payments = cursor.fetchall()
+                if not payments:
+                    log(f"No payments found for invoice {invoice_id}", "ERROR")
+                    return False
+
+                # Get the most recent payment to refund
+                payment_id, amount_paid, payment_method = payments[0]
+
+                # Make sure refund amount doesn't exceed the payment amount
+                refund_amount = float(refund_data.get('AMOUNT_REFUNDED', 0))
+                if refund_amount <= 0:
+                    log("Refund amount must be positive", "ERROR")
+                    return False
+
+                if refund_amount > amount_paid:
+                    log(f"Refund amount {refund_amount} exceeds payment amount {amount_paid}", "ERROR")
+                    return False
+
+                # Create a refund record (negative payment)
+                refund_notes = refund_data.get('NOTES', 'Refund for reservation cancellation')
+                refund_method = refund_data.get('REFUND_METHOD', payment_method)
+
+                cursor.execute("""
+                    INSERT INTO PAYMENT (
+                        INVOICE_ID, PAYMENT_DATE, AMOUNT_PAID, PAYMENT_METHOD,
+                        TRANSACTION_ID, REFERENCE_NUMBER, STATUS, NOTES
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    invoice_id,
+                    datetime.now().date(),
+                    -refund_amount,  # Negative amount indicates a refund
+                    f"Refund via {refund_method}",
+                    refund_data.get('TRANSACTION_ID'),
+                    None,
+                    'Refunded',
+                    refund_notes
+                ))
+
+                # Update original payment status
+                cursor.execute("""
+                    UPDATE PAYMENT
+                    SET STATUS = 'Refunded', 
+                        NOTES = COALESCE(NOTES, '') || ' | Refunded: ' || ?
+                    WHERE PAYMENT_ID = ?
+                """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), payment_id))
+
+                # Update invoice status if necessary
+                cursor.execute("""
+                    SELECT SUM(AMOUNT_PAID) as TOTAL_PAID
+                    FROM PAYMENT
+                    WHERE INVOICE_ID = ?
+                """, (invoice_id,))
+
+                total_paid = cursor.fetchone()[0] or 0
+
+                if total_paid <= 0:
+                    new_status = 'Refunded'
+                elif total_paid < total_amount:
+                    new_status = 'Partial'
+                else:
+                    new_status = 'Paid'
+
+                cursor.execute("""
+                    UPDATE INVOICE
+                    SET STATUS = ?, UPDATED_DATE = CURRENT_TIMESTAMP
+                    WHERE INVOICE_ID = ?
+                """, (new_status, invoice_id))
+
+                conn.commit()
+                log(f"Refund of {refund_amount} processed successfully for invoice {invoice_id}", "INFO")
+                return True
+
+        except Exception as e:
+            log(f"Error processing refund: {str(e)}", "ERROR")
+            return False
+
+    def check_payment_status_for_reservation(self, reservation_id):
+        """Check if a reservation has payments that may need to be refunded"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+
+                # Get invoice for this reservation
+                cursor.execute("""
+                    SELECT i.INVOICE_ID, i.TOTAL_AMOUNT, i.STATUS,
+                           COALESCE(SUM(CASE WHEN p.STATUS != 'Refunded' THEN p.AMOUNT_PAID ELSE 0 END), 0) as AMOUNT_PAID
+                    FROM INVOICE i
+                    LEFT JOIN PAYMENT p ON i.INVOICE_ID = p.INVOICE_ID
+                    WHERE i.RESERVATION_ID = ?
+                    GROUP BY i.INVOICE_ID
+                """, (reservation_id,))
+
+                result = cursor.fetchone()
+
+                if not result:
+                    return {'has_payments': False, 'needs_refund': False, 'amount': 0.0}
+
+                invoice_id, total_amount, status, amount_paid = result
+
+                return {
+                    'has_payments': amount_paid > 0,
+                    'needs_refund': amount_paid > 0,
+                    'amount': amount_paid,
+                    'invoice_id': invoice_id,
+                    'status': status
+                }
+
+        except Exception as e:
+            log(f"Error checking payment status: {str(e)}", "ERROR")
+            return {'has_payments': False, 'needs_refund': False, 'amount': 0.0}

@@ -149,24 +149,17 @@ class RoomModel:
             return result[0] if result else None
 
 
-    def assign_amenity_to_room(self, room_id: int, amenity_id: int):
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT OR IGNORE INTO ROOM_AMENITY_MAP (ROOM_ID, AMENITY_ID)
-                VALUES (?, ?)""", (room_id, amenity_id))
-            conn.commit()
-            log(f"Amenity ID {amenity_id} assigned to Room ID {room_id} successfully.")
-
-
     def assign_amenity_to_room_type(self, room_type_id: int, amenity_id: int):
+        """Assign an amenity to a room type"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                INSERT OR IGNORE INTO ROOM_TYPE_AMENITY_MAP (ROOM_TYPE_ID, AMENITY_ID)
-                VALUES (?, ?)""", (room_type_id, amenity_id))
+                INSERT INTO ROOM_TYPE_AMENITY_MAP (ROOM_TYPE_ID, AMENITY_ID) 
+                VALUES (?, ?)
+            """, (room_type_id, amenity_id))
             conn.commit()
             log(f"Amenity ID {amenity_id} assigned to Room Type ID {room_type_id} successfully.")
+            return True
 
 
     def get_all_rooms(self):
@@ -231,7 +224,7 @@ class RoomModel:
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT r.*, rt.TYPE_NAME 
+                SELECT r.*, rt.TYPE_NAME, rt.MAX_OCCUPANCY
                 FROM ROOM r
                 JOIN ROOM_TYPE rt ON r.ROOM_TYPE_ID = rt.ROOM_TYPE_ID
                 WHERE r.ROOM_ID = ?
@@ -285,6 +278,42 @@ class RoomModel:
             conn.commit()
 
             log(f"Room updated successfully with ID: {room_data['ROOM_ID']}")
+            return True
+
+
+    def update_room_type(self, room_type_data: dict):
+        """Update a room type's information in the database"""
+        log(f"[DEBUG] Attempting to update room type with data: {room_type_data}")
+
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE ROOM_TYPE SET 
+                    TYPE_NAME = ?, 
+                    BED_TYPE = ?, 
+                    BASE_ADULT_NUM = ?, 
+                    BASE_CHILD_NUM = ?, 
+                    EXTRA_ADULT_NUM = ?, 
+                    EXTRA_CHILD_NUM = ?,
+                    MAX_OCCUPANCY = ?,
+                    IMAGE = ?,
+                    DESCRIPTION = ?
+                WHERE ROOM_TYPE_ID = ?
+            """, (
+                room_type_data["TYPE_NAME"],
+                room_type_data["BED_TYPE"],
+                room_type_data["BASE_ADULT_NUM"],
+                room_type_data["BASE_CHILD_NUM"],
+                room_type_data["EXTRA_ADULT_NUM"],
+                room_type_data["EXTRA_CHILD_NUM"],
+                room_type_data["MAX_OCCUPANCY"],
+                room_type_data.get("IMAGE", ""),
+                room_type_data.get("DESCRIPTION", ""),
+                room_type_data["ROOM_TYPE_ID"]
+            ))
+            conn.commit()
+
+            log(f"Room type updated successfully with ID: {room_type_data['ROOM_TYPE_ID']}")
             return True
 
 
@@ -369,8 +398,13 @@ class RoomModel:
             log(f"Error deleting room {room_id}: {str(e)}")
             return False
 
-    def hard_delete_room_type(self, room_type_id: int):
-        """Permanently delete a room type from the database"""
+    def hard_delete_room_type(self, room_type_id: int, delete_associated_rooms=False):
+        """Permanently delete a room type from the database
+
+        Args:
+            room_type_id: ID of the room type to delete
+            delete_associated_rooms: If True, also delete all rooms using this room type
+        """
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -384,9 +418,32 @@ class RoomModel:
                 # Check if any rooms are using this room type
                 cursor.execute("SELECT COUNT(*) FROM ROOM WHERE ROOM_TYPE_ID = ?", (room_type_id,))
                 rooms_count = cursor.fetchone()[0]
-                if rooms_count > 0:
+
+                if rooms_count > 0 and not delete_associated_rooms:
                     log(f"Cannot delete room type '{room_type['TYPE_NAME']}': {rooms_count} rooms are still using this type.")
                     return False
+
+                # If delete_associated_rooms is True, delete all rooms with this room type first
+                if rooms_count > 0 and delete_associated_rooms:
+                    # Check for active reservations (if reservation table exists)
+                    try:
+                        cursor.execute("""
+                            SELECT COUNT(*) 
+                            FROM RESERVATION r 
+                            JOIN ROOM rm ON r.ROOM_ID = rm.ROOM_ID 
+                            WHERE rm.ROOM_TYPE_ID = ? AND r.STATUS NOT IN ('Cancelled', 'Completed')
+                        """, (room_type_id,))
+                        active_reservations = cursor.fetchone()[0]
+                        if active_reservations > 0:
+                            log(f"Cannot delete room type '{room_type['TYPE_NAME']}': Has {active_reservations} active reservations.")
+                            return False
+                    except:
+                        # Reservation table might not exist, continue with deletion
+                        pass
+
+                    # Delete all rooms with this room type
+                    cursor.execute("DELETE FROM ROOM WHERE ROOM_TYPE_ID = ?", (room_type_id,))
+                    log(f"Deleted {cursor.rowcount} rooms associated with room type '{room_type['TYPE_NAME']}'")
 
                 # Delete amenity mappings first
                 cursor.execute("DELETE FROM ROOM_TYPE_AMENITY_MAP WHERE ROOM_TYPE_ID = ?", (room_type_id,))
@@ -436,6 +493,19 @@ class RoomModel:
             log(f"Error deleting amenity {amenity_id}: {str(e)}")
             return False
 
+    def delete_amenities_for_room_type(self, room_type_id: int):
+        """Remove all amenity mappings for a specific room type"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM ROOM_TYPE_AMENITY_MAP WHERE ROOM_TYPE_ID = ?", (room_type_id,))
+                conn.commit()
+                log(f"All amenity mappings for room type ID {room_type_id} have been removed.")
+                return True
+        except Exception as e:
+            log(f"Error removing amenity mappings for room type {room_type_id}: {str(e)}")
+            return False
+
     # Enhanced Search and Filter Functions
     def search_rooms(self, search_query="", status_filter="All", floor_filter="All", room_type_filter="All"):
         """Enhanced search and filter function for rooms"""
@@ -460,36 +530,59 @@ class RoomModel:
 
                 # Add status filter
                 if status_filter and status_filter != "All":
-                    query += " AND r.STATUS = ?"
+                    query += " AND LOWER(r.STATUS) = LOWER(?)"
                     params.append(status_filter)
 
                 # Add floor filter
                 if floor_filter and floor_filter != "All":
                     query += " AND r.FLOOR = ?"
-                    params.append(int(floor_filter))
+                    params.append(floor_filter)
 
                 # Add room type filter
                 if room_type_filter and room_type_filter != "All":
-                    query += " AND rt.TYPE_NAME = ?"
+                    query += " AND r.ROOM_TYPE_ID = ?"
                     params.append(room_type_filter)
 
-                query += " ORDER BY r.ROOM_NUMBER"
-
+                # Execute the query
                 cursor.execute(query, params)
                 rooms = cursor.fetchall()
 
                 # Convert to list of dictionaries
-                columns = [column[0] for column in cursor.description]
+                column_names = [description[0] for description in cursor.description]
                 room_dicts = []
                 for room in rooms:
-                    room_dict = {columns[i]: room[i] for i in range(len(columns))}
+                    room_dict = {column_names[i]: room[i] for i in range(len(column_names))}
                     room_dicts.append(room_dict)
 
-                log(f"Search returned {len(room_dicts)} rooms with filters: search='{search_query}', status='{status_filter}', floor='{floor_filter}', type='{room_type_filter}'")
                 return room_dicts
 
         except Exception as e:
             log(f"Error searching rooms: {str(e)}")
+            return []
+
+    def get_rooms_by_room_type_id(self, room_type_id):
+        """Get all rooms that use a specific room type"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT r.*, rt.TYPE_NAME
+                    FROM ROOM r
+                    JOIN ROOM_TYPE rt ON r.ROOM_TYPE_ID = rt.ROOM_TYPE_ID
+                    WHERE r.ROOM_TYPE_ID = ?
+                """, (room_type_id,))
+
+                # Convert to list of dictionaries
+                rooms = cursor.fetchall()
+                column_names = [description[0] for description in cursor.description]
+                room_dicts = []
+                for room in rooms:
+                    room_dict = {column_names[i]: room[i] for i in range(len(column_names))}
+                    room_dicts.append(room_dict)
+
+                return room_dicts
+        except Exception as e:
+            log(f"Error getting rooms by room type: {str(e)}")
             return []
 
     def get_unique_floors(self):

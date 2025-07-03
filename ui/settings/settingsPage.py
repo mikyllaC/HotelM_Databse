@@ -61,7 +61,6 @@ class SettingsPage(ctk.CTkFrame):
         self.notebook.pack(expand=True, fill="both", padx=0, pady=0)
 
         self.create_user_settings_tab()
-        self.create_general_settings_tab()
         self.create_billing_settings_tab()
         self.create_hotel_management_tab()
 
@@ -80,11 +79,46 @@ class SettingsPage(ctk.CTkFrame):
                                   text_color="#303644")
         title_label.pack(anchor="w", pady=(0, 20))
 
-        # ---- Password Change Section ----
-        password_label = ctk.CTkLabel(scrollable, text="Change Password",
-                                     font=("Roboto", 14, "bold"), text_color="#303644")
-        password_label.pack(anchor="w", pady=(10, 5))
+        # ---- User Info Section ----
+        user_info_frame = ctk.CTkFrame(scrollable, fg_color="#f8f9fa")
+        user_info_frame.pack(fill="x", pady=(0, 10))
 
+        # ---- User Info ----
+        user_info = ""
+        if Session.current_user:
+            full_name = f"{Session.current_user.get('FIRST_NAME', 'Unknown')} {Session.current_user.get('LAST_NAME', 'Unknown')}"
+            user_info = f"Logged in as: {full_name} ({Session.current_user.get('EMAIL', 'No email')})"
+        else:
+            user_info = "Not logged in"
+
+        user_info_label = ctk.CTkLabel(user_info_frame, text=user_info,
+                                      font=("Roboto", 12, "bold"), text_color="#303644")
+        user_info_label.pack(anchor="w", padx=15, pady=(10, 10))
+
+        # ---- Logout Button Section ----
+        logout_container = ctk.CTkFrame(scrollable, fg_color="transparent")
+        logout_container.pack(fill="x", pady=(0, 20))
+
+        # ---- Logout Button ----
+        logout_btn = ctk.CTkButton(logout_container, text="Log Out",
+                                  command=self.handle_logout,
+                                  fg_color="#dc3545", hover_color="#c82333",
+                                  width=200, height=35)
+        logout_btn.pack(pady=5, anchor="w")
+
+        # ---- Divider ----
+        divider = ctk.CTkFrame(scrollable, height=2, fg_color="#e0e0e0")
+        divider.pack(fill="x", pady=20)
+
+        # ---- Session Section ----
+        session_title_frame = ctk.CTkFrame(scrollable, fg_color="transparent")
+        session_title_frame.pack(fill="x", pady=(0, 5))
+
+        session_label = ctk.CTkLabel(session_title_frame, text="Password Management",
+                                    font=("Roboto", 14, "bold"), text_color="#303644")
+        session_label.pack(anchor="w")
+
+        # ---- Password Change Section ----
         password_frame = ctk.CTkFrame(scrollable, fg_color="#f8f9fa")
         password_frame.pack(fill="x", pady=(0, 20))
 
@@ -100,11 +134,19 @@ class SettingsPage(ctk.CTkFrame):
         self.create_password_field(password_frame, "CONFIRM_PASSWORD", "Confirm New Password", is_password=True)
         self.confirm_pass_input = self.password_fields["CONFIRM_PASSWORD"]
 
+        # Change password button frame
+        save_btn_frame = ctk.CTkFrame(scrollable, fg_color="transparent")
+        save_btn_frame.pack(fill="x", pady=10)
+
         # ---- Submit Button ----
-        save_btn = ctk.CTkButton(scrollable, text="Change Password",
+        save_btn = ctk.CTkButton(save_btn_frame, text="Change Password",
                                 command=self.handle_change_password,
                                 fg_color="#206AA1", width=200, height=35)
-        save_btn.pack(anchor="w", pady=20)
+        save_btn.pack(anchor="w")
+
+        # ---- Divider ----
+        divider = ctk.CTkFrame(scrollable, height=1, fg_color="#e0e0e0")
+        divider.pack(fill="x", pady=20)
 
     def create_password_field(self, parent, key, label, is_password=False):
         """Create a password field similar to hotel field style"""
@@ -125,49 +167,6 @@ class SettingsPage(ctk.CTkFrame):
         self.password_fields[key] = widget
 
         widget.pack(side="right", padx=(10, 0))
-
-    def create_general_settings_tab(self):
-        """Tab for general system settings"""
-        tab_frame = ctk.CTkFrame(self.notebook, fg_color="white")
-        self.notebook.add(tab_frame, text='General Settings')
-
-        # Simple scrollable frame
-        scrollable = ctk.CTkScrollableFrame(tab_frame, fg_color="white")
-        scrollable.pack(expand=True, fill="both", padx=20, pady=20)
-
-        self.general_settings = {}
-
-        # Simple title
-        title_label = ctk.CTkLabel(scrollable, text="General Settings",
-                                  font=("Roboto Condensed", 20, "bold"),
-                                  text_color="#303644")
-        title_label.pack(anchor="w", pady=(0, 20))
-
-        # Hotel Operations Section
-        ops_label = ctk.CTkLabel(scrollable, text="Hotel Operations",
-                                font=("Roboto", 14, "bold"), text_color="#303644")
-        ops_label.pack(anchor="w", pady=(10, 5))
-
-        ops_frame = ctk.CTkFrame(scrollable, fg_color="#f8f9fa")
-        ops_frame.pack(fill="x", pady=(0, 20))
-
-        hotel_ops_fields = [
-            ("CHECK_IN_TIME", "Check-in Time", "15:00", "TIME"),
-            ("CHECK_OUT_TIME", "Check-out Time", "11:00", "TIME"),
-            ("BUSINESS_HOURS_START", "Business Hours Start", "06:00", "TIME"),
-            ("BUSINESS_HOURS_END", "Business Hours End", "23:00", "TIME"),
-            ("CANCELLATION_HOURS", "Cancellation Hours", "24", "INTEGER"),
-            ("MAX_OCCUPANCY_BUFFER", "Max Occupancy Buffer", "2", "INTEGER")
-        ]
-
-        for i, (key, label, default, type_) in enumerate(hotel_ops_fields):
-            self.create_simple_field(ops_frame, key, label, default, type_, i, self.general_settings)
-
-        # Simple save button
-        save_btn = ctk.CTkButton(scrollable, text="Save Settings",
-                                command=self.save_general_settings,
-                                fg_color="#206AA1", width=150, height=35)
-        save_btn.pack(pady=20)
 
     def create_billing_settings_tab(self):
         """Tab for billing and financial settings"""
@@ -430,23 +429,6 @@ class SettingsPage(ctk.CTkFrame):
     def load_settings(self):
         """Load current settings from database"""
         try:
-            # Load general settings
-            general_settings = self.settings_model.get_all_general_settings()
-
-            for setting in general_settings:
-                key = setting[0]  # SETTING_KEY
-                value = setting[1]  # SETTING_VALUE
-                field_type = setting[2]  # SETTING_TYPE
-                description = setting[3]  # DESCRIPTION
-
-                if key in self.general_settings:
-                    widget = self.general_settings[key]
-                    if isinstance(widget, ctk.BooleanVar):
-                        widget.set(value.lower() in ['true', '1', 'yes'])
-                    elif hasattr(widget, 'delete') and hasattr(widget, 'insert'):
-                        widget.delete(0, 'end')
-                        widget.insert(0, value)
-
             # Load billing settings
             billing_settings = self.settings_model.get_all_billing_settings()
 
@@ -466,43 +448,6 @@ class SettingsPage(ctk.CTkFrame):
 
         except Exception as e:
             log(f"Error loading settings: {str(e)}", "ERROR")
-
-    def save_general_settings(self):
-        """Save general settings to database"""
-        try:
-            settings_to_save = {}
-
-            for key, widget in self.general_settings.items():
-                if isinstance(widget, ctk.BooleanVar):
-                    value = "true" if widget.get() else "false"
-                    field_type = "BOOLEAN"
-                else:
-                    value = widget.get().strip()
-                    # Determine field type based on key
-                    if key in ["CANCELLATION_HOURS", "MAX_OCCUPANCY_BUFFER"]:
-                        field_type = "INTEGER"
-                    elif key in ["CHECK_IN_TIME", "CHECK_OUT_TIME", "BUSINESS_HOURS_START", "BUSINESS_HOURS_END"]:
-                        field_type = "TIME"
-                    else:
-                        field_type = "TEXT"
-
-                settings_to_save[key] = {
-                    'value': value,
-                    'type': field_type
-                }
-
-            # Update settings using the settings model
-            success = self.settings_model.update_multiple_general_settings(settings_to_save)
-
-            if success:
-                messagebox.showinfo("Success", "General settings saved successfully!")
-                log("General settings saved successfully")
-            else:
-                messagebox.showerror("Error", "Some settings could not be saved.")
-
-        except Exception as e:
-            log(f"Error saving general settings: {str(e)}", "ERROR")
-            messagebox.showerror("Error", f"Failed to save settings: {str(e)}")
 
     def save_billing_settings(self):
         """Save billing settings to database"""
@@ -540,22 +485,6 @@ class SettingsPage(ctk.CTkFrame):
         except Exception as e:
             log(f"Error saving billing settings: {str(e)}", "ERROR")
             messagebox.showerror("Error", f"Failed to save billing settings: {str(e)}")
-
-    def reset_general_settings(self):
-        """Reset general settings to defaults"""
-        confirm = messagebox.askyesno("Confirm Reset",
-                                     "Are you sure you want to reset all general settings to their default values?")
-        if confirm:
-            try:
-                success = self.settings_model.reset_to_defaults('general')
-                if success:
-                    messagebox.showinfo("Success", "General settings reset to defaults!")
-                    self.load_settings()  # Reload the interface
-                else:
-                    messagebox.showerror("Error", "Failed to reset settings.")
-            except Exception as e:
-                log(f"Error resetting general settings: {str(e)}", "ERROR")
-                messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
 
     def reset_billing_settings(self):
         """Reset billing settings to defaults"""
@@ -629,3 +558,40 @@ class SettingsPage(ctk.CTkFrame):
         self.old_pass_input.delete(0, 'end')
         self.new_pass_input.delete(0, 'end')
         self.confirm_pass_input.delete(0, 'end')
+
+    def handle_logout(self):
+        """Handle user logout"""
+        confirm = messagebox.askyesno("Confirm Logout",
+                                     "Are you sure you want to log out?")
+        if confirm:
+            try:
+                # Clear current user session
+                Session.current_user = None
+
+                log("User logged out successfully.")
+                messagebox.showinfo("Success", "You have been logged out successfully.")
+
+                # Close all windows and relaunch the application to return to login screen
+                self.master.master.destroy()  # Close the main application window
+
+                # Restart application
+                import main
+                main.main()
+
+            except Exception as e:
+                log(f"Error during logout: {str(e)}", "ERROR")
+                messagebox.showerror("Error", f"Failed to log out: {str(e)}")
+
+    def update_ui_for_logout(self):
+        """Update UI elements after logout"""
+        # Clear password fields
+        for key in ["CURRENT_PASSWORD", "NEW_PASSWORD", "CONFIRM_PASSWORD"]:
+            if key in self.password_fields:
+                self.password_fields[key].delete(0, 'end')
+
+        # Update user info label
+        user_info_label = self.nametowidget(self.notebook.tabs()[0]).winfo_children()[0].winfo_children()[1]
+        user_info_label.configure(text="Not logged in")
+
+        # Optionally, switch to a different tab or perform other UI updates
+        # self.notebook.select(0)  # Switch to the first tab (e.g., Dashboard)

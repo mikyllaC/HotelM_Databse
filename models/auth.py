@@ -111,3 +111,48 @@ class AuthModel:
         clear_screen(parent)
         login_screen = LoginScreen(parent, parent.on_login_success)
         login_screen.pack(fill="both", expand=True)
+
+    def signup(self, employee_data: dict, password: str):
+        """
+        Register a new employee with authentication credentials
+        Returns: (success: bool, message: str, employee_id: str or None)
+        """
+        try:
+            from models.employee import EmployeeModel
+
+            # Validate required fields
+            required_fields = ["FIRST_NAME", "LAST_NAME", "GENDER", "CONTACT_NUMBER",
+                             "EMAIL", "DATE_OF_BIRTH", "ADDRESS", "POSITION"]
+            for field in required_fields:
+                if not employee_data.get(field):
+                    return False, f"Missing required field: {field}", None
+
+            # Check if email or contact already exists
+            if self.check_existing_credentials(employee_data.get("EMAIL"), employee_data.get("CONTACT_NUMBER")):
+                return False, "Email or contact number already exists", None
+
+            # Create employee record
+            employee_model = EmployeeModel()
+            employee_id = employee_model.add_employee(employee_data)
+
+            # Update authentication with custom password
+            if password:
+                self.update_user_credentials(employee_id, password)
+
+            log(f"Successfully registered new employee: {employee_id}")
+            return True, f"Registration successful! Employee ID: {employee_id}", employee_id
+
+        except Exception as e:
+            log(f"Signup error: {str(e)}")
+            return False, f"Registration failed: {str(e)}", None
+
+    def check_existing_credentials(self, email: str, contact_number: str):
+        """Check if email or contact number already exists in the database"""
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM EMPLOYEE 
+                WHERE EMAIL = ? OR CONTACT_NUMBER = ?
+            """, (email, contact_number))
+            count = cursor.fetchone()[0]
+            return count > 0

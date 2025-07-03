@@ -143,7 +143,84 @@ class GuestModel:
             log(f"No guest found with ID: {guest_id}")
             return None
 
+    def check_guest_has_reservations(self, guest_id: int):
+        """Check if a guest has any existing active (non-cancelled) reservations"""
+        try:
+            with get_connection() as conn:
+                cursor = conn.cursor()
 
+                # Check only for active reservations (status != 'Cancelled')
+                cursor.execute("""
+                SELECT COUNT(*) FROM RESERVATION 
+                WHERE GUEST_ID = ? AND STATUS != 'Cancelled'
+                """, (guest_id,))
 
-if __name__ == "__main__":
-    main()
+                active_count = cursor.fetchone()[0]
+
+                # Also get total reservation count for informational purposes
+                cursor.execute("""
+                SELECT COUNT(*) FROM RESERVATION 
+                WHERE GUEST_ID = ?
+                """, (guest_id,))
+
+                total_count = cursor.fetchone()[0]
+
+                return active_count > 0, active_count, total_count
+        except Exception as e:
+            log(f"Error checking guest reservations: {str(e)}", "ERROR")
+            return True, 0, 0  # Assume has reservations on error for safety
+
+    def delete_guest(self, guest_id: int):
+        """Delete a guest if they have no existing active reservations"""
+        try:
+            # First check if the guest exists
+            guest = self.get_guest_by_id(guest_id)
+            if not guest:
+                log(f"Cannot delete: No guest found with ID: {guest_id}")
+                return False, "Guest not found"
+
+            # Check if the guest has any active reservations
+            has_active_reservations, active_count, total_count = self.check_guest_has_reservations(guest_id)
+
+            if has_active_reservations:
+                log(f"Cannot delete guest {guest_id}: Has {active_count} active reservations")
+                return False, f"Cannot delete guest with existing active reservations ({active_count} found)"
+
+            # Begin transaction
+            with get_connection() as conn:
+                cursor = conn.cursor()
+
+                try:
+                    # First, delete any cancelled reservations for this guest
+                    cursor.execute("DELETE FROM RESERVATION WHERE GUEST_ID = ? AND STATUS = 'Cancelled'", (guest_id,))
+                    cancelled_count = cursor.rowcount
+
+                    # Then, delete the guest
+                    cursor.execute("DELETE FROM GUEST WHERE GUEST_ID = ?", (guest_id,))
+                    guest_deleted = cursor.rowcount
+
+                    # Commit the transaction
+                    conn.commit()
+
+                    if guest_deleted > 0:
+                        log_message = f"Successfully deleted guest with ID: {guest_id}"
+                        if cancelled_count > 0:
+                            log_message += f" and {cancelled_count} cancelled reservation(s)"
+                        log(log_message)
+
+                        success_message = "Guest deleted successfully"
+                        if cancelled_count > 0:
+                            success_message += f" ({cancelled_count} cancelled reservation(s) were also removed)"
+                        return True, success_message
+                    else:
+                        log(f"Failed to delete guest with ID: {guest_id}")
+                        return False, "Failed to delete guest"
+
+                except Exception as e:
+                    # Roll back the transaction on error
+                    conn.rollback()
+                    raise
+
+        except Exception as e:
+            log(f"Error deleting guest: {str(e)}", "ERROR")
+            return False, f"Error: {str(e)}"

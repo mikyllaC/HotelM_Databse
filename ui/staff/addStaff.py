@@ -178,7 +178,7 @@ class AddStaffFrame(ctk.CTkFrame):
         self.status_dropdown = CustomDropdown(
             parent=self, parent_frame=form_frame,
             row=11, column=1,
-            options=["Active", "Inactive", "On Leave"],
+            options=["Active", "Inactive", "On Leave", "Terminated"],
             placeholder="Select Status",
             default_value="Active",
             width=self.ENTRY_WIDTH, height=self.ENTRY_HEIGHT,
