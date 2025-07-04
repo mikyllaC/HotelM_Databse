@@ -258,6 +258,12 @@ class ReservationModel:
     def cancel_reservation(self, reservation_id, reason=None):
         """Cancel a reservation and update its status"""
         try:
+            # Get the reservation data first to access room and guest IDs
+            reservation = self.get_reservation_by_id(reservation_id)
+            if not reservation:
+                log(f"Cannot cancel: Reservation {reservation_id} not found")
+                return False
+
             with get_connection() as conn:
                 cursor = conn.cursor()
 
@@ -275,6 +281,40 @@ class ReservationModel:
                 # Check if the update was successful
                 if cursor.rowcount > 0:
                     log(f"Cancelled reservation {reservation_id}")
+
+                    # Update the room status to Available
+                    from models.room import RoomModel
+                    room_model = RoomModel()
+
+                    room_id = reservation.get("ROOM_ID")
+                    room_data = room_model.get_room_by_id(room_id)
+                    if room_data:
+                        room_data["STATUS"] = "Available"
+                        room_model.update_room(room_data)
+                        log(f"Updated room {room_id} status to 'Available' after cancellation")
+
+                    # Update the guest status if they have no other active reservations
+                    from models.guest import GuestModel
+                    guest_model = GuestModel()
+
+                    guest_id = reservation.get("GUEST_ID")
+
+                    # Check if this guest has any other active reservations
+                    active_reservations = self.get_all_reservations(guest_id=guest_id)
+                    has_other_reservations = False
+
+                    for res in active_reservations:
+                        if res["RESERVATION_ID"] != reservation_id and res["STATUS"] != "Cancelled":
+                            has_other_reservations = True
+                            break
+
+                    # If no other active reservations, update guest status to "Checked Out"
+                    if not has_other_reservations:
+                        guest_data = guest_model.get_guest_by_id(guest_id)
+                        if guest_data:
+                            guest_data["STATUS"] = "Checked Out"
+                            guest_model.update_guest(guest_id, guest_data)
+                            log(f"Updated guest {guest_id} status to 'Checked Out' after cancellation")
 
                     # Update invoice status to Cancelled
                     try:
@@ -332,6 +372,10 @@ class ReservationModel:
             if status != "Cancelled":
                 return False
 
+            # Get room and guest IDs for status updates
+            room_id = reservation.get("ROOM_ID")
+            guest_id = reservation.get("GUEST_ID")
+
             # Delete associated invoices first to maintain referential integrity
             from models.billing import BillingModel
             billing_model = BillingModel()
@@ -368,6 +412,38 @@ class ReservationModel:
                 # Check if the deletion was successful
                 if cursor.rowcount > 0:
                     log(f"Deleted reservation {reservation_id}")
+
+                    # Double-check that room is marked as Available
+                    from models.room import RoomModel
+                    room_model = RoomModel()
+
+                    room_data = room_model.get_room_by_id(room_id)
+                    if room_data and room_data.get("STATUS") != "Available":
+                        room_data["STATUS"] = "Available"
+                        room_model.update_room(room_data)
+                        log(f"Updated room {room_id} status to 'Available' after deletion")
+
+                    # Check if guest should be updated (only if no other active reservations)
+                    from models.guest import GuestModel
+                    guest_model = GuestModel()
+
+                    # Check if this guest has any other active reservations
+                    active_reservations = self.get_all_reservations(guest_id=guest_id)
+                    has_other_reservations = False
+
+                    for res in active_reservations:
+                        if res["STATUS"] != "Cancelled":
+                            has_other_reservations = True
+                            break
+
+                    # If no other active reservations, update guest status to "Checked Out"
+                    if not has_other_reservations:
+                        guest_data = guest_model.get_guest_by_id(guest_id)
+                        if guest_data and guest_data.get("STATUS") != "Checked Out":
+                            guest_data["STATUS"] = "Checked Out"
+                            guest_model.update_guest(guest_id, guest_data)
+                            log(f"Updated guest {guest_id} status to 'Checked Out' after deletion")
+
                     return True
                 else:
                     log(f"No reservation found with ID {reservation_id} for deletion")

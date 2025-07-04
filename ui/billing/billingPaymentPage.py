@@ -372,6 +372,30 @@ class BillingPaymentPage(ctk.CTkFrame):
         title_label = ctk.CTkLabel(title_frame, text="Billing Details", font=("Roboto Condensed", 18))
         title_label.grid(row=0, column=0, padx=(0, 0), pady=(0, 0), sticky="w")
 
+        # Get invoice ID from billing values
+        invoice_id = billing_values[0]
+
+        # Get payment information if invoice is paid
+        payment_method = "N/A"
+        transaction_date = "N/A"
+
+        if billing_values[7] in ["Paid", "Completed"]:
+            try:
+                # Get the invoice details including payment information
+                invoice_details = self.billing_model.get_invoice_by_reservation(reservation_id)
+
+                if invoice_details and "PAYMENTS" in invoice_details and invoice_details["PAYMENTS"]:
+                    # Get the latest payment information
+                    latest_payment = invoice_details["PAYMENTS"][0]  # First payment is the latest due to ORDER BY DESC
+
+                    payment_method = latest_payment.get("PAYMENT_METHOD", "N/A")
+                    transaction_date = latest_payment.get("PAYMENT_DATE", "N/A")
+
+                    # Log that we found payment information
+                    log(f"Found payment information for invoice {invoice_id}: Method={payment_method}, Date={transaction_date}")
+            except Exception as e:
+                log(f"Error retrieving payment information: {str(e)}", "ERROR")
+
         # Billing Information
         info_frame = ctk.CTkFrame(scrollable, fg_color=self.BG_COLOR_2)
         info_frame.grid(row=1, column=0, padx=(20, 20), pady=(20, 20), sticky="nsew")
@@ -386,8 +410,8 @@ class BillingPaymentPage(ctk.CTkFrame):
             "Check-out Date": billing_values[5],
             "Total Amount": billing_values[6],
             "Payment Status": billing_values[7],
-            "Payment Method": "N/A",
-            "Transaction Date": "N/A"
+            "Payment Method": payment_method,
+            "Transaction Date": transaction_date
         }
 
         # Add info rows
@@ -442,7 +466,7 @@ class BillingPaymentPage(ctk.CTkFrame):
         # Create payment dialog
         payment_window = ctk.CTkToplevel(self)
         payment_window.title("Process Payment")
-        payment_window.geometry("450x650")
+        payment_window.geometry("450x550")
         payment_window.grab_set()
         payment_window.configure(fg_color=self.BG_COLOR_2)
 
@@ -470,14 +494,6 @@ class BillingPaymentPage(ctk.CTkFrame):
         )
         payment_method_dropdown.pack(pady=5)
 
-        # Amount paid
-        ctk.CTkLabel(payment_window, text="Amount Paid:",
-                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
-
-        amount_entry = ctk.CTkEntry(payment_window, width=200)
-        amount_entry.pack(pady=5)
-        amount_entry.insert(0, billing_data[6].replace("₱", "").replace(",", ""))
-
         # Transaction ID
         ctk.CTkLabel(payment_window, text="Transaction ID (Optional):",
                     font=("Roboto Condensed", 14)).pack(pady=(10, 5))
@@ -498,7 +514,8 @@ class BillingPaymentPage(ctk.CTkFrame):
 
         def confirm_payment():
             try:
-                amount_paid = float(amount_entry.get())
+                # Get the full amount from the billing data
+                full_amount = float(billing_data[6].replace("₱", "").replace(",", ""))
 
                 # First generate invoice if it doesn't exist
                 invoice_id = self.billing_model.generate_invoice(reservation_id)
@@ -509,7 +526,7 @@ class BillingPaymentPage(ctk.CTkFrame):
 
                 # Prepare payment data
                 payment_data = {
-                    'AMOUNT_PAID': amount_paid,
+                    'AMOUNT_PAID': full_amount,
                     'PAYMENT_METHOD': payment_method_var.get(),
                     'TRANSACTION_ID': transaction_entry.get() or None,
                     'NOTES': notes_entry.get("1.0", "end-1c") or None,
@@ -527,8 +544,6 @@ class BillingPaymentPage(ctk.CTkFrame):
                 else:
                     messagebox.showerror("Error", "Failed to process payment.")
 
-            except ValueError:
-                messagebox.showerror("Error", "Please enter a valid amount.")
             except Exception as e:
                 log(f"Error processing payment: {str(e)}", "ERROR")
                 messagebox.showerror("Error", f"An error occurred: {str(e)}")
@@ -579,7 +594,7 @@ class BillingPaymentPage(ctk.CTkFrame):
         # Create refund dialog
         refund_window = ctk.CTkToplevel(self)
         refund_window.title("Process Refund")
-        refund_window.geometry("450x650")
+        refund_window.geometry("450x550")
         refund_window.grab_set()
         refund_window.configure(fg_color=self.BG_COLOR_2)
 
@@ -607,14 +622,6 @@ class BillingPaymentPage(ctk.CTkFrame):
         )
         refund_method_dropdown.pack(pady=5)
 
-        # Amount refunded
-        ctk.CTkLabel(refund_window, text="Amount Refunded:",
-                    font=("Roboto Condensed", 14)).pack(pady=(10, 5))
-
-        amount_refund_entry = ctk.CTkEntry(refund_window, width=200)
-        amount_refund_entry.pack(pady=5)
-        amount_refund_entry.insert(0, billing_data[6].replace("₱", "").replace(",", ""))
-
         # Transaction ID
         ctk.CTkLabel(refund_window, text="Transaction ID (Optional):",
                     font=("Roboto Condensed", 14)).pack(pady=(10, 5))
@@ -635,11 +642,12 @@ class BillingPaymentPage(ctk.CTkFrame):
 
         def confirm_refund():
             try:
-                amount_refunded = float(amount_refund_entry.get())
+                # Get the full refund amount from the billing data
+                full_refund_amount = float(billing_data[6].replace("₱", "").replace(",", ""))
 
                 # Prepare refund data
                 refund_data = {
-                    'AMOUNT_REFUNDED': amount_refunded,
+                    'AMOUNT_REFUNDED': full_refund_amount,
                     'REFUND_METHOD': refund_method_var.get(),
                     'TRANSACTION_ID': transaction_refund_entry.get() or None,
                     'NOTES': notes_refund_entry.get("1.0", "end-1c") or None,
@@ -657,8 +665,6 @@ class BillingPaymentPage(ctk.CTkFrame):
                 else:
                     messagebox.showerror("Error", "Failed to process refund.")
 
-            except ValueError:
-                messagebox.showerror("Error", "Please enter a valid amount.")
             except Exception as e:
                 log(f"Error processing refund: {str(e)}", "ERROR")
                 messagebox.showerror("Error", f"An error occurred: {str(e)}")
