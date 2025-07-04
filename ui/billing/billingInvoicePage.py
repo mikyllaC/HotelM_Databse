@@ -273,21 +273,13 @@ class BillingInvoicePage(ctk.CTkFrame):
         button_frame = ctk.CTkFrame(footer_frame, fg_color="transparent")
         button_frame.pack(fill="x")
 
-        # Print/Download button
+        # Download button
         self.download_button = ctk.CTkButton(button_frame, text="Download PDF",
                                            font=("Roboto Condensed", 14, "bold"),
                                            width=150, height=40,
                                            fg_color="#2563eb", hover_color="#1d4ed8",
                                            command=self.download_invoice)
         self.download_button.pack(side="right", padx=(10, 0))
-
-        # Print button
-        self.print_button = ctk.CTkButton(button_frame, text="Print Invoice",
-                                        font=("Roboto Condensed", 14, "bold"),
-                                        width=150, height=40,
-                                        fg_color="#28a745", hover_color="#218838",
-                                        command=self.print_invoice)
-        self.print_button.pack(side="right", padx=(10, 0))
 
         # Close button
         self.close_button = ctk.CTkButton(button_frame, text="Close",
@@ -599,16 +591,204 @@ class BillingInvoicePage(ctk.CTkFrame):
 
     def download_invoice(self):
         """Download invoice as PDF"""
-        messagebox.showinfo("Download", "Invoice download functionality will be implemented.")
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib.units import inch
+            from tkinter import filedialog
+            import os
+            from datetime import datetime
 
-    def print_invoice(self):
-        """Print the invoice"""
-        messagebox.showinfo("Print", "Invoice print functionality will be implemented.")
+            # Ask user where to save the PDF
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".pdf",
+                initialfile=f"Invoice_{self.invoice_number_label.cget('text').split(':')[-1].strip().replace('#', '')}.pdf",
+                filetypes=[("PDF files", "*.pdf"), ("All files", "*")]
+            )
+
+            if not file_path:  # User cancelled
+                return
+
+            # Create PDF document
+            doc = SimpleDocTemplate(file_path, pagesize=letter)
+            elements = []
+
+            # Styles
+            styles = getSampleStyleSheet()
+            header_style = ParagraphStyle(
+                'Header',
+                parent=styles['Heading1'],
+                fontSize=16,
+                alignment=1  # Center alignment
+            )
+
+            title_style = ParagraphStyle(
+                'Title',
+                parent=styles['Heading2'],
+                fontSize=14,
+                spaceAfter=12
+            )
+
+            normal_style = styles['Normal']
+
+            # Add hotel information
+            hotel_info = []
+            hotel_name = self.get_hotel_name_from_labels()
+            hotel_info.append(Paragraph(f"<b>{hotel_name}</b>", header_style))
+            hotel_info.append(Spacer(1, 0.1 * inch))
+
+            # Get address and contact info from UI
+            address_info = self.get_hotel_address_from_labels()
+            hotel_info.append(Paragraph(address_info, normal_style))
+            hotel_info.append(Spacer(1, 0.2 * inch))
+
+            # Add guest and booking info
+            guest_info = self.guest_name_label.cget('text')
+            guest_email = self.guest_email_label.cget('text')
+            guest_contact = self.guest_contact_label.cget('text')
+
+            hotel_info.append(Paragraph("<b>Guest Information:</b>", title_style))
+            hotel_info.append(Paragraph(guest_info, normal_style))
+            hotel_info.append(Paragraph(guest_email, normal_style))
+            hotel_info.append(Paragraph(guest_contact, normal_style))
+            hotel_info.append(Spacer(1, 0.2 * inch))
+
+            # Add booking details
+            hotel_info.append(Paragraph("<b>Booking Details:</b>", title_style))
+            hotel_info.append(Paragraph(self.reservation_id_label.cget('text'), normal_style))
+            hotel_info.append(Paragraph(self.room_info_label.cget('text'), normal_style))
+            hotel_info.append(Paragraph(self.dates_label.cget('text'), normal_style))
+            hotel_info.append(Paragraph(self.nights_label.cget('text'), normal_style))
+            hotel_info.append(Spacer(1, 0.2 * inch))
+
+            # Add elements to the PDF
+            elements.extend(hotel_info)
+
+            # Add services table
+            elements.append(Paragraph("<b>SERVICES & CHARGES</b>", title_style))
+
+            # Create data for services table
+            services_data = [["Description", "Qty", "Amount"]]  # Header row
+
+            # Get services from treeview and replace peso symbol with PHP
+            for item_id in self.services_tree.get_children():
+                item_values = list(self.services_tree.item(item_id, "values"))
+                # Replace peso symbol in amount column
+                if len(item_values) > 2 and '₱' in item_values[2]:
+                    item_values[2] = item_values[2].replace('₱', 'PHP ')
+                services_data.append(item_values)
+
+            # Create the table
+            services_table = Table(services_data, colWidths=[4 * inch, 1 * inch, 1.5 * inch])
+
+            # Add style to the table
+            services_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (-1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ]))
+
+            elements.append(services_table)
+            elements.append(Spacer(1, 0.2 * inch))
+
+            # Add summary information - replace peso symbol with PHP
+            subtotal = self.subtotal_label.cget('text').replace('₱', 'PHP ')
+            tax = self.tax_label.cget('text').replace('₱', 'PHP ')
+            total = self.total_label.cget('text').replace('₱', 'PHP ')
+            
+            summary_data = [
+                ["", subtotal],
+                ["", tax],
+                ["", total]
+            ]
+
+            # Create the summary table
+            summary_table = Table(summary_data, colWidths=[4 * inch, 2.5 * inch])
+
+            # Add style to the summary table
+            summary_table.setStyle(TableStyle([
+                ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+                ('LINEABOVE', (1, 2), (1, 2), 1, colors.black),
+                ('FONTNAME', (1, 2), (1, 2), 'Helvetica-Bold'),
+            ]))
+
+            elements.append(summary_table)
+            elements.append(Spacer(1, 0.2 * inch))
+
+            # Add payment status
+            payment_status = self.payment_status_label.cget('text')
+            elements.append(Paragraph(payment_status, normal_style))
+
+            # Add payment information if available (when status is Paid)
+            if payment_status == "Status: Paid" or payment_status == "Status: Completed":
+                if self.payment_info_frame.winfo_ismapped():  # Check if payment info is visible
+                    payment_method = self.payment_method_label.cget('text')
+                    payment_date = self.payment_date_label.cget('text')
+
+                    elements.append(Spacer(1, 0.1 * inch))
+                    elements.append(Paragraph(payment_method, normal_style))
+                    elements.append(Paragraph(payment_date, normal_style))
+
+            # Add notes
+            elements.append(Spacer(1, 0.3 * inch))
+            elements.append(Paragraph("Thank you for choosing our hotel. We hope you enjoyed your stay!", normal_style))
+
+            # Build the PDF
+            doc.build(elements)
+
+            # Show success message
+            messagebox.showinfo("Success", f"Invoice has been saved to:\n{file_path}")
+
+        except ImportError as ie:
+            messagebox.showerror("Missing Dependencies", f"Please install the required packages: {ie}")
+            log(f"Missing dependencies for PDF creation: {str(ie)}", "ERROR")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate PDF: {str(e)}")
+            log(f"Error generating PDF: {str(e)}", "ERROR")
+
 
     def close_window(self):
         """Close the invoice window"""
         if self.master:
             self.master.destroy()
+
+    def get_hotel_name_from_labels(self):
+        """Extract hotel name from the UI labels"""
+        # Look through all widgets in the header frame to find hotel name label
+        for widget in self.invoice_frame.winfo_children()[0].winfo_children()[0].winfo_children():
+            if isinstance(widget, ctk.CTkFrame):  # Hotel info frame
+                for child in widget.winfo_children():
+                    if isinstance(child, ctk.CTkLabel):
+                        text = child.cget('text')
+                        if text == text.upper() and len(text) > 3:  # Likely the hotel name in uppercase
+                            return text
+        return "GRAND HOTEL"  # Default fallback
+
+    def get_hotel_address_from_labels(self):
+        """Extract hotel address info from the UI labels"""
+        address_info = []
+        # Look through all widgets in the header frame to find address labels
+        for widget in self.invoice_frame.winfo_children()[0].winfo_children()[0].winfo_children():
+            if isinstance(widget, ctk.CTkFrame):  # Hotel info frame
+                found_hotel_name = False
+                for child in widget.winfo_children():
+                    if isinstance(child, ctk.CTkLabel):
+                        text = child.cget('text')
+                        if text == text.upper() and len(text) > 3:  # Skip the hotel name
+                            found_hotel_name = True
+                            continue
+                        if found_hotel_name:
+                            address_info.append(text)
+        return "<br/>".join(address_info) if address_info else "123 Main Street<br/>City, Country<br/>Phone: +123456789"
 
 
 if __name__ == "__main__":

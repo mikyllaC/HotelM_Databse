@@ -50,13 +50,9 @@ class EditReservation(ctk.CTkFrame):
             self.master.after(100, self.master.destroy)
             return
 
-        # Check if the reservation has been paid
-        if self.billing_model.is_reservation_paid(reservation_id):
-            messagebox.showerror("Cannot Edit", "This reservation cannot be edited because it has already been paid.")
-            log(f"Attempted to edit a paid reservation (ID: {reservation_id})")
-            # Schedule window destruction to avoid Tkinter errors
-            self.master.after(100, self.master.destroy)
-            return
+        # Check if the reservation has been paid - we'll store this information
+        # but no longer prevent editing paid reservations
+        self.is_paid = self.billing_model.is_reservation_paid(reservation_id)
 
         # Get available rooms (including the currently selected room)
         self.rooms = []

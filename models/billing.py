@@ -359,15 +359,32 @@ class BillingModel:
             extra_adults = max(0, num_adults - base_adults)
             extra_children = max(0, num_children - base_children)
 
-            # Get rates from room type or billing settings
+            # Get rates from room type
             extra_adult_rate = room_type.get('EXTRA_ADULT_RATE', 0)
             extra_child_rate = room_type.get('EXTRA_CHILD_RATE', 0)
 
-            # If room type doesn't have rates, use settings defaults
+            # Get current room rate which should have the correct extra guest rates
+            current_rate = self.get_current_room_rate(room_type_id)
+            if current_rate:
+                columns = ["RATE_ID", "ROOM_TYPE_ID", "RATE_NAME", "BASE_RATE",
+                          "EXTRA_ADULT_RATE", "EXTRA_CHILD_RATE", "EFFECTIVE_DATE",
+                          "EXPIRY_DATE", "IS_ACTIVE", "CREATED_DATE"]
+                rate_dict = dict(zip(columns, current_rate))
+                # Use the rates from the room rate record if available
+                if rate_dict['EXTRA_ADULT_RATE'] > 0:
+                    extra_adult_rate = float(rate_dict['EXTRA_ADULT_RATE'])
+                if rate_dict['EXTRA_CHILD_RATE'] > 0:
+                    extra_child_rate = float(rate_dict['EXTRA_CHILD_RATE'])
+
+            # If room type doesn't have rates, use settings defaults as fallback
             if extra_adult_rate == 0:
-                extra_adult_rate = self.settings_model.get_billing_setting('DEFAULT_EXTRA_ADULT_RATE', 25.0)
+                extra_adult_rate = float(self.settings_model.get_billing_setting('DEFAULT_EXTRA_ADULT_RATE', 0.0))
             if extra_child_rate == 0:
-                extra_child_rate = self.settings_model.get_billing_setting('DEFAULT_EXTRA_CHILD_RATE', 15.0)
+                extra_child_rate = float(self.settings_model.get_billing_setting('DEFAULT_EXTRA_CHILD_RATE', 0.0))
+
+            # Ensure rates are properly converted to float
+            extra_adult_rate = float(extra_adult_rate)
+            extra_child_rate = float(extra_child_rate)
 
             # Calculate total extra charges
             total_extra_charges = (extra_adults * extra_adult_rate * nights) + (extra_children * extra_child_rate * nights)
@@ -832,82 +849,118 @@ class BillingModel:
 
                 # Extra adult charges
                 if extra_adults > 0:
+                    # Get rates from room type or current room rate
+                    current_rate = self.get_current_room_rate(room_type_id)
                     extra_adult_rate = room_type.get('EXTRA_ADULT_RATE', 0)
+
+                    if current_rate:
+                        columns = ["RATE_ID", "ROOM_TYPE_ID", "RATE_NAME", "BASE_RATE",
+                                  "EXTRA_ADULT_RATE", "EXTRA_CHILD_RATE", "EFFECTIVE_DATE",
+                                  "EXPIRY_DATE", "IS_ACTIVE", "CREATED_DATE"]
+                        rate_dict = dict(zip(columns, current_rate))
+
+                        if rate_dict['EXTRA_ADULT_RATE'] > 0:
+                            extra_adult_rate = float(rate_dict['EXTRA_ADULT_RATE'])
+
                     if extra_adult_rate == 0:
-                        extra_adult_rate = self.settings_model.get_billing_setting('DEFAULT_EXTRA_ADULT_RATE', 25.0)
+                        extra_adult_rate = float(self.settings_model.get_billing_setting('DEFAULT_EXTRA_ADULT_RATE', 0.0))
 
                     extra_adult_total = extra_adults * extra_adult_rate * nights
-                    line_items.append({
-                        'description': f"Extra Adults ({extra_adults} guests)",
-                        'quantity': extra_adults * nights,
-                        'unit_price': extra_adult_rate,
-                        'total_price': extra_adult_total,
-                        'category': 'extra_guest'
-                    })
+
+                    if extra_adult_total > 0:
+                        line_items.append({
+                            'description': f"Extra Adult Fee ({extra_adults} adult{'s' if extra_adults > 1 else ''})",
+                            'quantity': extra_adults * nights,
+                            'unit_price': extra_adult_rate,
+                            'total_price': extra_adult_total,
+                            'category': 'extra_guests'
+                        })
 
                 # Extra children charges
                 if extra_children > 0:
+                    # Get rates from room type or current room rate
+                    current_rate = self.get_current_room_rate(room_type_id) if not 'current_rate' in locals() else current_rate
                     extra_child_rate = room_type.get('EXTRA_CHILD_RATE', 0)
+
+                    if current_rate:
+                        if not 'rate_dict' in locals():
+                            columns = ["RATE_ID", "ROOM_TYPE_ID", "RATE_NAME", "BASE_RATE",
+                                      "EXTRA_ADULT_RATE", "EXTRA_CHILD_RATE", "EFFECTIVE_DATE",
+                                      "EXPIRY_DATE", "IS_ACTIVE", "CREATED_DATE"]
+                            rate_dict = dict(zip(columns, current_rate))
+
+                        if rate_dict['EXTRA_CHILD_RATE'] > 0:
+                            extra_child_rate = float(rate_dict['EXTRA_CHILD_RATE'])
+
                     if extra_child_rate == 0:
-                        extra_child_rate = self.settings_model.get_billing_setting('DEFAULT_EXTRA_CHILD_RATE', 15.0)
+                        extra_child_rate = float(self.settings_model.get_billing_setting('DEFAULT_EXTRA_CHILD_RATE', 0.0))
 
                     extra_child_total = extra_children * extra_child_rate * nights
+
+                    if extra_child_total > 0:
+                        line_items.append({
+                            'description': f"Extra Child Fee ({extra_children} child{'ren' if extra_children > 1 else ''})",
+                            'quantity': extra_children * nights,
+                            'unit_price': extra_child_rate,
+                            'total_price': extra_child_total,
+                            'category': 'extra_guests'
+                        })
+
+            # 3. Time-based fees (early check-in, late checkout)
+            time_based_fees = self.calculate_time_based_fees(reservation)
+            if time_based_fees > 0:
+                notes = reservation.get("NOTES", "").lower()
+
+                if "early check" in notes or "early arrival" in notes:
+                    early_checkin_fee = self.settings_model.get_billing_setting('EARLY_CHECKIN_FEE', 25.0)
+                    if early_checkin_fee > 0:
+                        line_items.append({
+                            'description': "Early Check-in Fee",
+                            'quantity': 1,
+                            'unit_price': early_checkin_fee,
+                            'total_price': early_checkin_fee,
+                            'category': 'time_fees'
+                        })
+
+                if "late check" in notes or "late departure" in notes:
+                    late_checkout_fee = self.settings_model.get_billing_setting('LATE_CHECKOUT_FEE', 50.0)
+                    if late_checkout_fee > 0:
+                        line_items.append({
+                            'description': "Late Check-out Fee",
+                            'quantity': 1,
+                            'unit_price': late_checkout_fee,
+                            'total_price': late_checkout_fee,
+                            'category': 'time_fees'
+                        })
+
+            # Calculate subtotal before service charge
+            charges_before_service = sum(item['total_price'] for item in line_items)
+
+            # 4. Apply service charge
+            service_charge_rate = self.get_service_charge_rate()
+            if service_charge_rate > 0:
+                service_charge = charges_before_service * service_charge_rate
+                if service_charge > 0:
                     line_items.append({
-                        'description': f"Extra Children ({extra_children} guests)",
-                        'quantity': extra_children * nights,
-                        'unit_price': extra_child_rate,
-                        'total_price': extra_child_total,
-                        'category': 'extra_guest'
+                        'description': f"Service Charge ({int(service_charge_rate * 100)}%)",
+                        'quantity': 1,
+                        'unit_price': service_charge,
+                        'total_price': service_charge,
+                        'category': 'service_charge'
                     })
 
-            # 3. Time-based fees
-            notes = reservation.get("NOTES", "").lower()
-
-            # Early check-in fee
-            if "early check" in notes or "early arrival" in notes:
-                early_checkin_fee = self.settings_model.get_billing_setting('EARLY_CHECKIN_FEE', 25.0)
-                line_items.append({
-                    'description': "Early Check-in Fee",
-                    'quantity': 1,
-                    'unit_price': early_checkin_fee,
-                    'total_price': early_checkin_fee,
-                    'category': 'service_fee'
-                })
-
-            # Late checkout fee
-            if "late check" in notes or "late departure" in notes:
-                late_checkout_fee = self.settings_model.get_billing_setting('LATE_CHECKOUT_FEE', 50.0)
-                line_items.append({
-                    'description': "Late Check-out Fee",
-                    'quantity': 1,
-                    'unit_price': late_checkout_fee,
-                    'total_price': late_checkout_fee,
-                    'category': 'service_fee'
-                })
-
-            # 4. Service charge (if applicable)
+            # 5. Calculate final subtotal
             subtotal = sum(item['total_price'] for item in line_items)
-            service_charge_rate = self.get_service_charge_rate()
 
-            if service_charge_rate > 0:
-                service_charge_amount = subtotal * service_charge_rate
-                line_items.append({
-                    'description': f"Service Charge ({service_charge_rate*100:.0f}%)",
-                    'quantity': 1,
-                    'unit_price': service_charge_amount,
-                    'total_price': service_charge_amount,
-                    'category': 'service_charge'
-                })
-
+            # Return structured data for the invoice
             return {
+                'reservation_id': reservation_id,
                 'line_items': line_items,
-                'reservation_details': {
-                    'nights': nights,
-                    'adults': num_adults,
-                    'children': num_children,
-                    'room_number': room_number,
-                    'room_type': room_type_name
-                }
+                'subtotal': subtotal,
+                'room_id': room_id,
+                'room_number': room_number,
+                'room_type': room_type_name,
+                'nights': nights
             }
 
         except Exception as e:
@@ -1101,3 +1154,4 @@ class BillingModel:
         except Exception as e:
             log(f"Error checking payment status: {str(e)}", "ERROR")
             return {'has_payments': False, 'needs_refund': False, 'amount': 0.0}
+
