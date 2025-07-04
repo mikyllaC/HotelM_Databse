@@ -212,6 +212,17 @@ class ReservationModel:
     def update_reservation(self, reservation_id, updated_data):
         """Update an existing reservation with new data"""
         try:
+            # First, get the current reservation to check for status change
+            current_reservation = self.get_reservation_by_id(reservation_id)
+            if not current_reservation:
+                log(f"No reservation found with ID {reservation_id}")
+                return False
+
+            # Check if status is being updated to "Checked Out"
+            is_checkout = False
+            if "STATUS" in updated_data and updated_data["STATUS"] == "Checked Out" and current_reservation.get("STATUS") != "Checked Out":
+                is_checkout = True
+
             with get_connection() as conn:
                 cursor = conn.cursor()
 
@@ -245,6 +256,44 @@ class ReservationModel:
                 # Check if the update was successful
                 if cursor.rowcount > 0:
                     log(f"Updated reservation {reservation_id}")
+
+                    # If the status was updated to "Checked Out", update related entities
+                    if is_checkout:
+                        # Update the room status to "Available"
+                        from models.room import RoomModel
+                        room_model = RoomModel()
+
+                        room_id = current_reservation.get("ROOM_ID")
+                        room_data = room_model.get_room_by_id(room_id)
+                        if room_data:
+                            room_data["STATUS"] = "Available"
+                            room_model.update_room(room_data)
+                            log(f"Updated room {room_id} status to 'Available' after checkout")
+
+                        # Update the guest status to "Checked Out" if no other active reservations
+                        from models.guest import GuestModel
+                        guest_model = GuestModel()
+
+                        guest_id = current_reservation.get("GUEST_ID")
+
+                        # Check if this guest has any other active reservations
+                        active_reservations = self.get_all_reservations(guest_id=guest_id)
+                        has_other_active_reservations = False
+
+                        for res in active_reservations:
+                            # Skip the current reservation and check other active reservations
+                            if res["RESERVATION_ID"] != reservation_id and res["STATUS"] not in ["Cancelled", "Checked Out"]:
+                                has_other_active_reservations = True
+                                break
+
+                        # If no other active reservations, update guest status to "Checked Out"
+                        if not has_other_active_reservations:
+                            guest_data = guest_model.get_guest_by_id(guest_id)
+                            if guest_data:
+                                guest_data["STATUS"] = "Checked Out"
+                                guest_model.update_guest(guest_id, guest_data)
+                                log(f"Updated guest {guest_id} status to 'Checked Out'")
+
                     return True
                 else:
                     log(f"No reservation found with ID {reservation_id}")
