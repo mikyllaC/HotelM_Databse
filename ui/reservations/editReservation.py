@@ -237,7 +237,7 @@ class EditReservation(ctk.CTkFrame):
         label = ctk.CTkLabel(right_frame, text="Status", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
         label.grid(row=row, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
 
-        status_options = ["Booked", "Confirmed", "Checked In", "Checked Out"]
+        status_options = ["Booked", "Confirmed", "Checked In", "Checked Out", "Reserved"]
         current_status = self.current_reservation.get('STATUS', 'Booked')
 
         self.status_combobox = ctk.CTkComboBox(
@@ -291,6 +291,21 @@ class EditReservation(ctk.CTkFrame):
             if not self.validate_fields():
                 return
 
+            # Check if trying to change status to "Checked In" and verify payment status
+            new_status = self.status_combobox.get()
+            if new_status == "Checked In" and self.current_reservation.get('STATUS') != "Checked In":
+                # Check if invoice has been paid
+                billing_status = self.billing_model.check_payment_status_for_reservation(self.reservation_id)
+                if billing_status and (billing_status.get('status') != 'Paid' and billing_status.get('payment_status', '') != 'Paid'):
+                    messagebox.showerror(
+                        "Payment Required",
+                        "Cannot check-in this reservation because payment has not been completed.\n\n"
+                        f"Current payment status: {billing_status.get('payment_status', 'Pending')}\n"
+                        "Please complete payment before check-in."
+                    )
+                    log(f"Check-in attempt blocked due to unpaid invoice for reservation {self.reservation_id}")
+                    return
+
             # Collect updated data
             updated_data = {}
 
@@ -336,7 +351,6 @@ class EditReservation(ctk.CTkFrame):
                 return
 
             # Check if status has changed
-            new_status = self.status_combobox.get()
             if new_status != self.current_reservation.get('STATUS'):
                 updated_data['STATUS'] = new_status
 

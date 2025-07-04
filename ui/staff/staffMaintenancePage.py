@@ -65,14 +65,14 @@ class StaffMaintenancePage(ctk.CTkFrame):
             self.action_frame,
             width=160,
             height=36,
-            values=["All Status", "Active", "Inactive", "On Leave"],
+            values=["All Status", "Active", "Inactive", "On Leave", "Terminated"],
             variable=self.filter_var,
-            font=("Arial", 14)
+            font=("Arial", 14),
+            command = self.on_combobox_change
         )
         self.filter_combobox.pack(side="left", padx=(0, 10))
 
         self.search_entry.bind("<KeyRelease>", lambda e: self.filter_table())
-        self.filter_combobox.bind("<<ComboboxSelected>>", lambda e: self.filter_table())
 
         # Table Frame
         self.table_frame = ctk.CTkFrame(self, corner_radius=10, fg_color="transparent")
@@ -137,14 +137,45 @@ class StaffMaintenancePage(ctk.CTkFrame):
         search_text = self.search_var.get().lower()
         selected_status = self.filter_var.get()
 
-        filtered_data = [self.employee_data[0]]
-        for row in self.employee_data[1:]:
-            name = row[1].lower() if len(row) > 1 else ""
-            status = row[6] if len(row) > 6 else ""
-            if (search_text in name) and (selected_status == "All Status" or status == selected_status):
-                filtered_data.append(row)
+        # Clear treeview first
+        for item in self.treeview.get_children():
+            self.treeview.delete(item)
 
-        self.update_treeview(filtered_data)
+        # If "All Status" is selected, refresh from database to get all employees
+        if selected_status == "All Status" and not search_text:
+            self.populate_employee_data()
+            return
+
+        # Get fresh data from database for filtering
+        employee_data = self.employee_model.get_all_employees()
+
+        if not employee_data:
+            return
+
+        # Filter the data
+        for employee in employee_data:
+            full_name = f"{employee['FIRST_NAME']} {employee['LAST_NAME']}".lower()
+            status = employee['STATUS']
+
+            # Apply filters
+            name_match = search_text in full_name
+            status_match = (selected_status == "All Status" or status == selected_status)
+
+            if name_match and status_match:
+                row_data = [
+                    employee['EMPLOYEE_ID'],
+                    f"{employee['FIRST_NAME']} {employee['LAST_NAME']}",
+                    employee['POSITION'],
+                    employee['CONTACT_NUMBER'],
+                    employee['EMAIL'],
+                    employee['ASSIGNED_TO'] or "Not assigned",
+                    employee['STATUS']
+                ]
+                self.treeview.insert("", "end", iid=employee['EMPLOYEE_ID'], values=row_data)
+
+    def on_combobox_change(self, value):
+        """Called when combobox selection changes"""
+        self.filter_table()
 
     def update_treeview(self, data=None):
         if data is None:

@@ -9,11 +9,14 @@ def main():
 class BillingModel:
     def __init__(self):
         self.create_billing_tables()
+
         # Initialize settings model for getting configuration values
         from models.settings import SettingsModel
         self.settings_model = SettingsModel()
 
+
     def create_billing_tables(self):
+        """Create billing-related tables if they do not exist"""
         with get_connection() as conn:
             cursor = conn.cursor()
 
@@ -87,6 +90,7 @@ class BillingModel:
             conn.commit()
             log("Billing tables created successfully.")
 
+
     def auto_generate_invoice_for_reservation(self, reservation_id, created_by=None):
         """Automatically generate invoice when reservation is created/confirmed"""
         try:
@@ -106,21 +110,23 @@ class BillingModel:
             log(f"Error auto-generating invoice: {str(e)}", "ERROR")
             return None
 
-    def _get_tax_rate(self):
+
+    def get_tax_rate(self):
         """Get tax rate from settings"""
         return self.settings_model.get_billing_setting('TAX_RATE', 0.12)
 
-    def _get_service_charge_rate(self):
+    def get_service_charge_rate(self):
         """Get service charge rate from settings"""
         return self.settings_model.get_billing_setting('SERVICE_CHARGE', 0.10)
 
-    def _get_currency_symbol(self):
+    def get_currency_symbol(self):
         """Get currency symbol from settings"""
         return self.settings_model.get_billing_setting('CURRENCY_SYMBOL', '₱')
 
-    def _get_decimal_places(self):
+    def get_decimal_places(self):
         """Get decimal places for currency from settings"""
         return self.settings_model.get_billing_setting('DECIMAL_PLACES', 2)
+
 
     def generate_invoice(self, reservation_id, created_by=None):
         """Generate a comprehensive invoice for a reservation using all billing settings"""
@@ -132,6 +138,7 @@ class BillingModel:
                 cursor.execute("SELECT INVOICE_ID FROM INVOICE WHERE RESERVATION_ID = ?", (reservation_id,))
                 existing_invoice = cursor.fetchone()
 
+                # If invoice already exists, return it
                 if existing_invoice:
                     log(f"Invoice already exists for reservation {reservation_id}")
                     return existing_invoice[0]
@@ -149,19 +156,19 @@ class BillingModel:
                     return None
 
                 # Calculate total charges with comprehensive billing
-                subtotal = self._calculate_total_charges(reservation, room_model)
+                subtotal = self.calculate_total_charges(reservation, room_model)
 
                 if subtotal is None:
                     log(f"Could not calculate charges for reservation {reservation_id}")
                     return None
 
                 # Get tax rate and calculate tax
-                tax_rate = self._get_tax_rate()
+                tax_rate = self.get_tax_rate()
                 tax_amount = subtotal * tax_rate
                 total_amount = subtotal + tax_amount
 
                 # Calculate due date based on settings
-                due_date = self._calculate_due_date()
+                due_date = self.calculate_due_date()
 
                 # Create invoice with detailed information
                 cursor.execute("""
@@ -173,7 +180,7 @@ class BillingModel:
                 """, (
                     reservation_id, datetime.now().date(), due_date,
                     subtotal, tax_rate, tax_amount, total_amount,
-                    'Pending', created_by, self._generate_invoice_notes(reservation)
+                    'Pending', created_by, self.generate_invoice_notes(reservation)
                 ))
 
                 invoice_id = cursor.lastrowid
@@ -188,12 +195,14 @@ class BillingModel:
             log(f"Error generating invoice: {str(e)}", "ERROR")
             return None
 
-    def _calculate_due_date(self):
-        """Calculate invoice due date based on billing settings"""
+    def calculate_due_date(self):
+        """Calculate invoice due date based on billing settings - s"""
         try:
+            # Get due days from settings
             due_days = self.settings_model.get_billing_setting('INVOICE_DUE_DAYS', 0)
             due_date = datetime.now().date()
 
+            # If due days are specified, add them to the current date
             if due_days > 0:
                 from datetime import timedelta
                 due_date = due_date + timedelta(days=due_days)
@@ -203,8 +212,8 @@ class BillingModel:
             log(f"Error calculating due date: {str(e)}", "ERROR")
             return datetime.now().date()
 
-    def _generate_invoice_notes(self, reservation):
-        """Generate invoice notes based on reservation details"""
+    def generate_invoice_notes(self, reservation):
+        """Generate invoice notes based on reservation details - s"""
         try:
             notes = []
 
@@ -227,8 +236,8 @@ class BillingModel:
             log(f"Error generating invoice notes: {str(e)}", "ERROR")
             return None
 
-    def _calculate_total_charges(self, reservation, room_model):
-        """Calculate total charges for a reservation with comprehensive settings-based fees"""
+    def calculate_total_charges(self, reservation, room_model):
+        """Calculate total charges for a reservation including room rate, extra guests, and time-based fees"""
         try:
             # Get room details
             room_id = reservation.get("ROOM_ID")
@@ -247,7 +256,7 @@ class BillingModel:
 
             # Get room rate and guest details
             room_type_id = room_data.get('ROOM_TYPE_ID')
-            base_rate = self._get_room_rate(room_type_id)
+            base_rate = self.get_room_rate(room_type_id)
 
             # Check if room rate exists
             if base_rate is None:
@@ -262,18 +271,15 @@ class BillingModel:
             total_charges = nights * base_rate
 
             # Add extra guest charges using room type rates
-            extra_charges = self._calculate_extra_guest_charges(room_type_id, num_adults, num_children, nights)
+            extra_charges = self.calculate_extra_guest_charges(room_type_id, num_adults, num_children, nights)
             total_charges += extra_charges
 
             # Add time-based fees (early check-in, late checkout)
-            time_based_fees = self._calculate_time_based_fees(reservation)
+            time_based_fees = self.calculate_time_based_fees(reservation)
             total_charges += time_based_fees
 
-            # Add deposit if required
-            deposit_amount = self._calculate_deposit_amount(total_charges)
-
-            # Apply service charge if enabled
-            service_charge_rate = self._get_service_charge_rate()
+            # Apply service charge
+            service_charge_rate = self.get_service_charge_rate()
             if service_charge_rate > 0:
                 service_charge = total_charges * service_charge_rate
                 total_charges += service_charge
@@ -284,8 +290,9 @@ class BillingModel:
             log(f"Error calculating charges: {str(e)}", "ERROR")
             return None
 
+
     def validate_room_has_rate(self, room_id):
-        """Validate that a room's room type has a rate configured"""
+        """Validate if a room has a configured rate, so that reservations can be made"""
         try:
             from models.room import RoomModel
             room_model = RoomModel()
@@ -299,8 +306,9 @@ class BillingModel:
             room_type_name = room_data.get('TYPE_NAME', 'Unknown')
 
             # Check if rate exists
-            base_rate = self._get_room_rate(room_type_id)
+            base_rate = self.get_room_rate(room_type_id)
 
+            # If no rate is found, return an error message
             if base_rate is None:
                 return False, f"No rate configured for room type '{room_type_name}'. Please set up room rates before making reservations."
 
@@ -310,17 +318,18 @@ class BillingModel:
             log(f"Error validating room rate: {str(e)}", "ERROR")
             return False, f"Error validating room rate: {str(e)}"
 
-    def _get_room_rate(self, room_type_id):
+
+    def get_room_rate(self, room_type_id):
         """Get the current room rate for a room type"""
         try:
-            # Get rate from ROOM_RATE table only
+            # Get rate from ROOM_RATE table
             current_rate = self.get_current_room_rate(room_type_id)
             if current_rate:
-                # Convert row to dictionary
                 columns = ["RATE_ID", "ROOM_TYPE_ID", "RATE_NAME", "BASE_RATE",
                           "EXTRA_ADULT_RATE", "EXTRA_CHILD_RATE", "EFFECTIVE_DATE",
                           "EXPIRY_DATE", "IS_ACTIVE", "CREATED_DATE"]
                 rate_dict = dict(zip(columns, current_rate))
+                # Return the base rate as a float
                 return float(rate_dict['BASE_RATE'])
 
             # If no rate found, return None to indicate missing rate
@@ -331,7 +340,7 @@ class BillingModel:
             log(f"Error getting room rate for room type {room_type_id}: {str(e)}", "ERROR")
             return None
 
-    def _calculate_extra_guest_charges(self, room_type_id, num_adults, num_children, nights):
+    def calculate_extra_guest_charges(self, room_type_id, num_adults, num_children, nights):
         """Calculate charges for extra guests based on room type capacity"""
         try:
             from models.room import RoomModel
@@ -342,6 +351,7 @@ class BillingModel:
             if not room_type:
                 return 0
 
+            # Get base adult and child numbers from room type
             base_adults = room_type.get('BASE_ADULT_NUM', 2)
             base_children = room_type.get('BASE_CHILD_NUM', 0)
 
@@ -359,6 +369,7 @@ class BillingModel:
             if extra_child_rate == 0:
                 extra_child_rate = self.settings_model.get_billing_setting('DEFAULT_EXTRA_CHILD_RATE', 15.0)
 
+            # Calculate total extra charges
             total_extra_charges = (extra_adults * extra_adult_rate * nights) + (extra_children * extra_child_rate * nights)
 
             return total_extra_charges
@@ -367,17 +378,10 @@ class BillingModel:
             log(f"Error calculating extra guest charges: {str(e)}", "ERROR")
             return 0
 
-    def _calculate_time_based_fees(self, reservation):
-        """Calculate early check-in and late checkout fees based on actual times"""
+    def calculate_time_based_fees(self, reservation):
+        """Calculate early check-in and late checkout fees based on actual times - s"""
         try:
             total_fees = 0
-
-            # Get standard times from general settings
-            from models.settings import SettingsModel
-            settings = SettingsModel()
-
-            # For now, we'll apply fees based on settings since we don't have actual check-in/out times
-            # In a full implementation, you'd compare actual times with standard times
 
             # Early check-in fee (if requested in reservation notes or special field)
             notes = reservation.get("NOTES", "").lower()
@@ -396,91 +400,6 @@ class BillingModel:
             log(f"Error calculating time-based fees: {str(e)}", "ERROR")
             return 0
 
-    def _calculate_deposit_amount(self, total_charges):
-        """Calculate required deposit amount based on settings"""
-        try:
-            deposit_required = self.settings_model.get_billing_setting('DEPOSIT_REQUIRED', True)
-
-            if not deposit_required:
-                return 0
-
-            # Check if deposit is fixed amount or percentage
-            deposit_amount = self.settings_model.get_billing_setting('DEPOSIT_AMOUNT', 50.0)
-            deposit_percentage = self.settings_model.get_billing_setting('DEPOSIT_PERCENTAGE', 20.0)
-
-            # Use percentage if it results in higher amount, otherwise use fixed
-            percentage_amount = total_charges * (deposit_percentage / 100)
-
-            return max(deposit_amount, percentage_amount)
-
-        except Exception as e:
-            log(f"Error calculating deposit: {str(e)}", "ERROR")
-            return 0
-
-    def record_payment(self, invoice_id, amount_paid, payment_method, processed_by=None,
-                      transaction_id=None, reference_number=None, notes=None):
-        """Record a payment for an invoice"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-
-                # Insert payment record
-                cursor.execute("""
-                    INSERT INTO PAYMENT (
-                        INVOICE_ID, PAYMENT_DATE, AMOUNT_PAID, PAYMENT_METHOD,
-                        TRANSACTION_ID, REFERENCE_NUMBER, NOTES, PROCESSED_BY
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    invoice_id, datetime.now().date(), amount_paid, payment_method,
-                    transaction_id, reference_number, notes, processed_by
-                ))
-
-                # Check if invoice is fully paid
-                cursor.execute("""
-                    SELECT TOTAL_AMOUNT, 
-                           COALESCE(SUM(p.AMOUNT_PAID), 0) as TOTAL_PAID
-                    FROM INVOICE i
-                    LEFT JOIN PAYMENT p ON i.INVOICE_ID = p.INVOICE_ID
-                    WHERE i.INVOICE_ID = ?
-                    GROUP BY i.INVOICE_ID, i.TOTAL_AMOUNT
-                """, (invoice_id,))
-
-                result = cursor.fetchone()
-                if result:
-                    total_amount, total_paid = result
-                    if total_paid >= total_amount:
-                        # Mark invoice as paid
-                        cursor.execute("""
-                            UPDATE INVOICE 
-                            SET STATUS = 'Paid', UPDATED_DATE = CURRENT_TIMESTAMP
-                            WHERE INVOICE_ID = ?
-                        """, (invoice_id,))
-
-                conn.commit()
-                log(f"Payment of {amount_paid} recorded for invoice {invoice_id}")
-                return True
-
-        except Exception as e:
-            log(f"Error recording payment: {str(e)}", "ERROR")
-            return False
-
-    def get_invoice_by_id(self, invoice_id):
-        """Get invoice details by ID"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT i.*, r.CHECK_IN_DATE, r.CHECK_OUT_DATE, r.GUEST_ID
-                    FROM INVOICE i
-                    JOIN RESERVATION r ON i.RESERVATION_ID = r.RESERVATION_ID
-                    WHERE i.INVOICE_ID = ?
-                """, (invoice_id,))
-
-                return cursor.fetchone()
-
-        except Exception as e:
-            log(f"Error getting invoice: {str(e)}", "ERROR")
-            return None
 
     def get_invoices_by_reservation(self, reservation_id):
         """Get all invoices for a reservation"""
@@ -499,49 +418,14 @@ class BillingModel:
             log(f"Error getting invoices for reservation: {str(e)}", "ERROR")
             return []
 
-    def get_payments_by_invoice(self, invoice_id):
-        """Get all payments for an invoice"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT * FROM PAYMENT 
-                    WHERE INVOICE_ID = ?
-                    ORDER BY PAYMENT_DATE DESC
-                """, (invoice_id,))
-
-                return cursor.fetchall()
-
-        except Exception as e:
-            log(f"Error getting payments for invoice: {str(e)}", "ERROR")
-            return []
-
-    def update_invoice_status(self, invoice_id, status):
-        """Update invoice status"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE INVOICE 
-                    SET STATUS = ?, UPDATED_DATE = CURRENT_TIMESTAMP
-                    WHERE INVOICE_ID = ?
-                """, (status, invoice_id))
-
-                conn.commit()
-                log(f"Invoice {invoice_id} status updated to {status}")
-                return True
-
-        except Exception as e:
-            log(f"Error updating invoice status: {str(e)}", "ERROR")
-            return False
 
     def get_billing_summary_by_reservation(self, reservation_id):
-        """Get billing summary for a reservation - auto-generate invoice if needed"""
+        """Get a summary of billing information for a reservation"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
 
-                # Check if invoice exists
+                # Get the latest invoice for this reservation
                 cursor.execute("""
                     SELECT INVOICE_ID, SUBTOTAL, TAX_AMOUNT, TOTAL_AMOUNT, STATUS
                     FROM INVOICE 
@@ -565,6 +449,7 @@ class BillingModel:
                         """, (invoice_id,))
                         invoice = cursor.fetchone()
 
+                # If we still don't have an invoice, return None
                 if invoice:
                     invoice_id, subtotal, tax_amount, total_amount, status = invoice
 
@@ -578,13 +463,16 @@ class BillingModel:
                     total_paid = cursor.fetchone()[0]
 
                     # Determine payment status
-                    if total_paid >= total_amount:
+                    if status == "Cancelled":
+                        payment_status = "Cancelled"
+                    elif total_paid >= total_amount:
                         payment_status = "Paid"
                     elif total_paid > 0:
                         payment_status = "Partial"
                     else:
                         payment_status = "Pending"
 
+                    # Return summary as a dictionary
                     return {
                         'invoice_id': f"INV{invoice_id:04d}",
                         'total_amount': total_amount,
@@ -599,8 +487,9 @@ class BillingModel:
             log(f"Error getting billing summary: {str(e)}", "ERROR")
             return None
 
+
     def get_invoice_by_reservation(self, reservation_id):
-        """Get detailed invoice information for a reservation - auto-generate if needed"""
+        """Get detailed invoice for a reservation"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -648,15 +537,15 @@ class BillingModel:
                 """, (invoice['INVOICE_ID'],))
 
                 payments = []
+                # Fetch all payments and convert to dictionary
                 for payment_row in cursor.fetchall():
                     payment_columns = [description[0] for description in cursor.description]
                     payment = dict(zip(payment_columns, payment_row))
                     payments.append(payment)
-
+                # Add payments to invoice
                 invoice['PAYMENTS'] = payments
 
-                # Create simplified items list (since we don't have line items anymore)
-                # Calculate based on the invoice totals
+                # Calculate subtotal if not already set - s
                 nights = 1
                 try:
                     check_in_date = datetime.strptime(invoice['CHECK_IN_DATE'], "%Y-%m-%d")
@@ -680,13 +569,14 @@ class BillingModel:
             log(f"Error getting detailed invoice: {str(e)}", "ERROR")
             return None
 
+
     def process_payment(self, invoice_id, payment_data):
-        """Enhanced payment processing with comprehensive validation and settings integration"""
+        """Process a payment for an invoice"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
 
-                # Get invoice details - fix ambiguous STATUS column by using table alias
+                # Check if invoice exists
                 cursor.execute("""
                     SELECT i.TOTAL_AMOUNT, i.STATUS, COALESCE(SUM(p.AMOUNT_PAID), 0) as PAID_AMOUNT
                     FROM INVOICE i
@@ -696,20 +586,26 @@ class BillingModel:
                 """, (invoice_id,))
 
                 invoice_info = cursor.fetchone()
+
+                # If invoice not found, return error
                 if not invoice_info:
                     log(f"Invoice {invoice_id} not found")
                     return False
 
+                # Unpack invoice info
                 total_amount, current_status, paid_amount = invoice_info
+                # Calculate remaining amount
                 remaining_amount = total_amount - paid_amount
 
                 # Validate payment amount
                 payment_amount = float(payment_data['AMOUNT_PAID'])
 
+                # Check if payment amount is valid
                 if payment_amount <= 0:
                     log(f"Invalid payment amount: {payment_amount}")
                     return False
 
+                # Check if invoice is already fully paid
                 if payment_amount > remaining_amount + 0.01:  # Allow small rounding differences
                     log(f"Payment amount ({payment_amount}) exceeds remaining balance ({remaining_amount})")
                     return False
@@ -731,11 +627,10 @@ class BillingModel:
                     'Completed',
                     payment_data.get('PROCESSED_BY')
                 ))
-
-                # Update invoice status based on payment completion
                 new_paid_amount = paid_amount + payment_amount
 
-                if new_paid_amount >= total_amount - 0.01:  # Fully paid (with small rounding tolerance)
+                # Update invoice status based on new paid amount
+                if new_paid_amount >= total_amount - 0.01:  # 0.01 for rounding errors
                     new_status = 'Paid'
                 elif new_paid_amount > 0:
                     new_status = 'Partial'
@@ -759,6 +654,8 @@ class BillingModel:
             log(f"Error processing payment: {str(e)}", "ERROR")
             return False
 
+
+    # ROOM RATE
     def add_room_rate(self, room_type_id, rate_data):
         """Add a new room rate for a room type"""
         try:
@@ -786,8 +683,10 @@ class BillingModel:
             log(f"Error adding room rate: {str(e)}", "ERROR")
             return None
 
+
     def get_current_room_rate(self, room_type_id, check_date=None):
-        """Get the current active rate for a room type on a specific date"""
+        """Get the current active room rate for a room type"""
+        # when adding a new reservation, use get_current_room_rate to calculate the proper charges
         try:
             if not check_date:
                 from datetime import date
@@ -810,8 +709,10 @@ class BillingModel:
             log(f"Error getting room rate: {str(e)}", "ERROR")
             return None
 
+
     def get_room_rate_by_room_type(self, room_type_id):
-        """Get the existing rate for a room type (regardless of active status)"""
+        """Get the existing rate for a room type (regardless of active status) - s"""
+        # when editing room rates, use this to retrieve the existing rate configuration regardless if it's active.
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -833,6 +734,7 @@ class BillingModel:
         except Exception as e:
             log(f"Error getting room rate by room type: {str(e)}", "ERROR")
             return None
+
 
     def update_room_rate(self, rate_id, rate_data):
         """Update an existing room rate"""
@@ -862,18 +764,9 @@ class BillingModel:
             log(f"Error updating room rate: {str(e)}", "ERROR")
             return False
 
-    def format_currency(self, amount):
-        """Format currency using settings"""
-        try:
-            symbol = self._get_currency_symbol()
-            decimal_places = self._get_decimal_places()
-            return f"{symbol}{amount:.{decimal_places}f}"
-        except Exception as e:
-            log(f"Error formatting currency: {str(e)}", "ERROR")
-            return f"₱{amount:.2f}"  # Fallback format
 
     def get_detailed_charge_breakdown(self, reservation_id):
-        """Get detailed breakdown of all charges for an invoice"""
+        """Get detailed breakdown of all charges for the invoice popup's service table - s"""
         try:
             from models.reservation import ReservationModel
             from models.room import RoomModel
@@ -881,17 +774,20 @@ class BillingModel:
             reservation_model = ReservationModel()
             room_model = RoomModel()
 
+            # Get reservation details
             reservation = reservation_model.get_reservation_by_id(reservation_id)
+            # If reservation not found, return None
             if not reservation:
                 return None
 
+            # Get room data
             room_id = reservation.get("ROOM_ID")
             room_data = room_model.get_room_data_with_type(room_id)
-
+            # If room data not found, return None
             if not room_data:
                 return None
 
-            # Calculate nights
+            # Calculate nights - s
             check_in_date = datetime.strptime(reservation.get("CHECK_IN_DATE"), "%Y-%m-%d")
             check_out_date = datetime.strptime(reservation.get("CHECK_OUT_DATE"), "%Y-%m-%d")
             nights = (check_out_date - check_in_date).days
@@ -899,9 +795,9 @@ class BillingModel:
             if nights <= 0:
                 nights = 1
 
-            # Get room rate and guest details
+            # Get room rate and guest details - s
             room_type_id = room_data.get('ROOM_TYPE_ID')
-            base_rate = self._get_room_rate(room_type_id)
+            base_rate = self.get_room_rate(room_type_id)
 
             if base_rate is None:
                 return None
@@ -991,7 +887,7 @@ class BillingModel:
 
             # 4. Service charge (if applicable)
             subtotal = sum(item['total_price'] for item in line_items)
-            service_charge_rate = self._get_service_charge_rate()
+            service_charge_rate = self.get_service_charge_rate()
 
             if service_charge_rate > 0:
                 service_charge_amount = subtotal * service_charge_rate
@@ -1018,16 +914,15 @@ class BillingModel:
             log(f"Error getting detailed charge breakdown: {str(e)}", "ERROR")
             return None
 
+
     def is_reservation_paid(self, reservation_id):
-        """
-        Check if a reservation has been fully paid.
-        Returns True if paid in full, False otherwise.
-        """
+        """Check if a reservation is fully paid based on its invoice,
+        used when editing reservations to prevent editing when paid"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
 
-                # First check if invoice exists
+                # Get the invoice for this reservation
                 cursor.execute("""
                     SELECT INVOICE_ID, TOTAL_AMOUNT, STATUS 
                     FROM INVOICE 
@@ -1035,8 +930,9 @@ class BillingModel:
                 """, (reservation_id,))
 
                 invoice = cursor.fetchone()
+                # If no invoice exists, consider it unpaid
                 if not invoice:
-                    return False  # No invoice means not paid
+                    return False
 
                 invoice_id, total_amount, status = invoice
 
@@ -1060,90 +956,6 @@ class BillingModel:
             log(f"Error checking if reservation is paid: {str(e)}", "ERROR")
             return False
 
-    def refund_payment(self, payment_id, refund_amount, refund_reason=None, processed_by=None):
-        """Process a refund for a payment"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
-
-                # Get the payment details first
-                cursor.execute("SELECT INVOICE_ID, AMOUNT_PAID, PAYMENT_METHOD, STATUS FROM PAYMENT WHERE PAYMENT_ID = ?", (payment_id,))
-                payment = cursor.fetchone()
-
-                if not payment:
-                    log(f"Payment {payment_id} not found", "ERROR")
-                    return False, "Payment not found"
-
-                invoice_id, original_amount, payment_method, status = payment
-
-                # Validate refund amount
-                if refund_amount <= 0:
-                    return False, "Refund amount must be positive"
-
-                if refund_amount > original_amount:
-                    return False, f"Refund amount (${refund_amount:.2f}) exceeds original payment (${original_amount:.2f})"
-
-                if status == 'Refunded':
-                    return False, "This payment has already been refunded"
-
-                # Record the refund transaction
-                cursor.execute("""
-                    INSERT INTO PAYMENT (
-                        INVOICE_ID, PAYMENT_DATE, AMOUNT_PAID, PAYMENT_METHOD,
-                        TRANSACTION_ID, REFERENCE_NUMBER, STATUS, NOTES, PROCESSED_BY
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    invoice_id,
-                    datetime.now().date(),
-                    -refund_amount,  # Negative amount to indicate refund
-                    f"Refund via {payment_method}",
-                    None,
-                    None,
-                    'Refunded',
-                    refund_reason or f"Refund for payment #{payment_id}",
-                    processed_by
-                ))
-
-                # Update original payment status
-                cursor.execute("""
-                    UPDATE PAYMENT 
-                    SET STATUS = 'Refunded', NOTES = COALESCE(NOTES, '') || ' | Refunded: ' || ?
-                    WHERE PAYMENT_ID = ?
-                """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), payment_id))
-
-                # Update invoice status based on total payments after refund
-                cursor.execute("""
-                    SELECT TOTAL_AMOUNT, COALESCE(SUM(p.AMOUNT_PAID), 0) as TOTAL_PAID
-                    FROM INVOICE i
-                    LEFT JOIN PAYMENT p ON i.INVOICE_ID = p.INVOICE_ID
-                    WHERE i.INVOICE_ID = ?
-                    GROUP BY i.INVOICE_ID, i.TOTAL_AMOUNT
-                """, (invoice_id,))
-
-                result = cursor.fetchone()
-                if result:
-                    total_amount, total_paid = result
-
-                    if total_paid >= total_amount:
-                        new_status = 'Paid'
-                    elif total_paid > 0:
-                        new_status = 'Partial'
-                    else:
-                        new_status = 'Pending'
-
-                    cursor.execute("""
-                        UPDATE INVOICE 
-                        SET STATUS = ?, UPDATED_DATE = CURRENT_TIMESTAMP
-                        WHERE INVOICE_ID = ?
-                    """, (new_status, invoice_id))
-
-                conn.commit()
-                log(f"Refund of ${refund_amount:.2f} processed for payment {payment_id}, invoice {invoice_id}")
-                return True, f"Refund of ${refund_amount:.2f} processed successfully"
-
-        except Exception as e:
-            log(f"Error processing refund: {str(e)}", "ERROR")
-            return False, f"Error processing refund: {str(e)}"
 
     def process_refund(self, reservation_id, refund_data):
         """Process a refund for a reservation's invoice"""
@@ -1159,6 +971,8 @@ class BillingModel:
                 """, (reservation_id,))
 
                 invoice_result = cursor.fetchone()
+
+                # If no invoice exists, we cannot process a refund
                 if not invoice_result:
                     log(f"No invoice found for reservation {reservation_id}", "ERROR")
                     return False
@@ -1174,27 +988,27 @@ class BillingModel:
                 """, (invoice_id,))
 
                 payments = cursor.fetchall()
+                # If no payments found, we cannot process a refund
                 if not payments:
                     log(f"No payments found for invoice {invoice_id}", "ERROR")
                     return False
 
-                # Get the most recent payment to refund
+                # Get the most recent payment
                 payment_id, amount_paid, payment_method = payments[0]
 
-                # Make sure refund amount doesn't exceed the payment amount
+                # Validate refund amount
                 refund_amount = float(refund_data.get('AMOUNT_REFUNDED', 0))
                 if refund_amount <= 0:
                     log("Refund amount must be positive", "ERROR")
                     return False
-
                 if refund_amount > amount_paid:
                     log(f"Refund amount {refund_amount} exceeds payment amount {amount_paid}", "ERROR")
                     return False
 
-                # Create a refund record (negative payment)
                 refund_notes = refund_data.get('NOTES', 'Refund for reservation cancellation')
                 refund_method = refund_data.get('REFUND_METHOD', payment_method)
 
+                # Insert refund payment record
                 cursor.execute("""
                     INSERT INTO PAYMENT (
                         INVOICE_ID, PAYMENT_DATE, AMOUNT_PAID, PAYMENT_METHOD,
@@ -1211,7 +1025,7 @@ class BillingModel:
                     refund_notes
                 ))
 
-                # Update original payment status
+                # Update the original payment record to indicate it was refunded
                 cursor.execute("""
                     UPDATE PAYMENT
                     SET STATUS = 'Refunded', 
@@ -1219,7 +1033,7 @@ class BillingModel:
                     WHERE PAYMENT_ID = ?
                 """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), payment_id))
 
-                # Update invoice status if necessary
+                # Update the invoice status based on total payments
                 cursor.execute("""
                     SELECT SUM(AMOUNT_PAID) as TOTAL_PAID
                     FROM PAYMENT
@@ -1228,6 +1042,7 @@ class BillingModel:
 
                 total_paid = cursor.fetchone()[0] or 0
 
+                # Determine new invoice status based on total paid
                 if total_paid <= 0:
                     new_status = 'Refunded'
                 elif total_paid < total_amount:
@@ -1235,6 +1050,7 @@ class BillingModel:
                 else:
                     new_status = 'Paid'
 
+                # Update the invoice status
                 cursor.execute("""
                     UPDATE INVOICE
                     SET STATUS = ?, UPDATED_DATE = CURRENT_TIMESTAMP
@@ -1249,8 +1065,9 @@ class BillingModel:
             log(f"Error processing refund: {str(e)}", "ERROR")
             return False
 
+
     def check_payment_status_for_reservation(self, reservation_id):
-        """Check if a reservation has payments that may need to be refunded"""
+        """Check if a reservation has payments that may need to be refunded before cancellation of reservation"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -1267,6 +1084,7 @@ class BillingModel:
 
                 result = cursor.fetchone()
 
+                # If no invoice found, return default values
                 if not result:
                     return {'has_payments': False, 'needs_refund': False, 'amount': 0.0}
 

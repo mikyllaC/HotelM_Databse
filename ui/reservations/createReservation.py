@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from models.room import RoomModel
 from models.guest import GuestModel
 from models.reservation import ReservationModel
+from models.billing import BillingModel
 from ui.components.customDropdown import CustomDropdown
 from ui.components.modernDatePicker import ModernDateEntry
 from utils.helpers import log
@@ -33,20 +34,50 @@ class CreateReservation(ctk.CTkFrame):
         self.room_model = RoomModel()
         self.guest_model = GuestModel()
         self.reservation_model = ReservationModel()
+        self.billing_model = BillingModel()
 
         self.entries = {}
         self.required_fields = ["entry_guest", "entry_rooms", "entry_adults", "entry_check_in", "entry_check_out"]
 
-        # Get available rooms
+        # Get available rooms with active rates
         self.rooms = []
         self.room_map = {}
+
+        # Create a cache of room types that have active rates to avoid repeated checks
+        room_types_with_active_rates = {}
+
         for room in self.room_model.get_all_rooms():
             if room['STATUS'] == 'Available':
                 room_data = self.room_model.get_room_data_with_type(room['ROOM_ID'])
                 if room_data:
-                    room_display = f"{room_data['ROOM_NUMBER']} - {room_data['TYPE_NAME']}"
-                    self.rooms.append(room_display)
-                    self.room_map[room_display] = room_data['ROOM_ID']
+                    room_type_id = room_data['ROOM_TYPE_ID']
+
+                    # Check if we've already validated this room type
+                    if room_type_id not in room_types_with_active_rates:
+                        # Check if this room type has an active rate
+                        current_rate = self.billing_model.get_current_room_rate(room_type_id)
+                        if current_rate:
+                            # Convert to dictionary for easier access
+                            columns = ["RATE_ID", "ROOM_TYPE_ID", "RATE_NAME", "BASE_RATE",
+                                      "EXTRA_ADULT_RATE", "EXTRA_CHILD_RATE", "EFFECTIVE_DATE",
+                                      "EXPIRY_DATE", "IS_ACTIVE", "CREATED_DATE"]
+                            rate_dict = dict(zip(columns, current_rate))
+
+                            # Check if rate is active and not expired
+                            is_active = bool(rate_dict['IS_ACTIVE'])
+                            expiry_date = rate_dict['EXPIRY_DATE']
+                            expired = expiry_date and datetime.strptime(expiry_date, '%Y-%m-%d').date() < datetime.now().date()
+
+                            # Cache the result for this room type
+                            room_types_with_active_rates[room_type_id] = is_active and not expired
+                        else:
+                            room_types_with_active_rates[room_type_id] = False
+
+                    # If this room type has an active rate, add this room to the dropdown
+                    if room_types_with_active_rates[room_type_id]:
+                        room_display = f"{room_data['ROOM_NUMBER']} - {room_data['TYPE_NAME']}"
+                        self.rooms.append(room_display)
+                        self.room_map[room_display] = room_data['ROOM_ID']
 
         # Get guests
         self.guests = []
@@ -309,7 +340,7 @@ class CreateReservation(ctk.CTkFrame):
             # Create reservation data
             reservation_data = {
                 "GUEST_ID": guest_id,
-                "ROOM_IDS": [room_id],  # Pass single room ID in a list
+                "ROOM_ID": room_id,  # Pass single room ID in a list
                 "CHECK_IN_DATE": self.check_in_date.get(),
                 "CHECK_OUT_DATE": self.check_out_date.get(),
                 "NUMBER_OF_ADULTS": int(self.entries["entry_adults"].get()),

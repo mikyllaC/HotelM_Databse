@@ -139,11 +139,6 @@ class BillingPaymentPage(ctk.CTkFrame):
         self.treeview.column("Amount", width=120, anchor="w")
         self.treeview.column("Payment Status", width=120, anchor="w")
 
-        # Scrollbar for treeview
-        scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.treeview.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.treeview.configure(yscrollcommand=scrollbar.set)
-
         # Bind row selection event
         self.treeview.bind("<<TreeviewSelect>>", self.on_row_select)
 

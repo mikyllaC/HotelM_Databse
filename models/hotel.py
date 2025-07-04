@@ -1,11 +1,8 @@
 from utils.helpers import log, get_connection
 
 def main():
-    # Example usage
     hotel_model = HotelModel()
-
     hotel_model.create_default_hotel()
-
 
 
 class HotelModel:
@@ -14,6 +11,7 @@ class HotelModel:
 
 
     def create_hotel_table(self):
+        """Create the hotel table if it doesn't exist"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(f"""
@@ -34,7 +32,7 @@ class HotelModel:
             conn.commit()
 
     def create_default_hotel(self):
-        """Add a new hotel to the database"""
+        """Create a default hotel if it doesn't exist"""
         with get_connection() as conn:
             cursor = conn.cursor()
 
@@ -63,6 +61,7 @@ class HotelModel:
                 columns = [description[0] for description in cursor.description]
                 return dict(zip(columns, result))
             return None
+
 
     def update_hotel_info(self, hotel_id, hotel_data):
         """Update basic hotel information"""

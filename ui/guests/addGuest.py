@@ -172,7 +172,7 @@ class AddGuestFrame(ctk.CTkFrame):
         # ========== Status ==========
         label = ctk.CTkLabel(form_frame, text="Status *", font=self.FONT_LABEL, text_color=self.TEXT_COLOR_LABEL)
         label.grid(row=5, column=0, sticky="nw", padx=self.PADX_LABEL, pady=10)
-        status_dropdown = ctk.CTkOptionMenu(form_frame, values=["Checked Out", "Checked In", "In Transit"])
+        status_dropdown = ctk.CTkOptionMenu(form_frame, values=["Checked Out", "Checked In", "Reserved"])
         status_dropdown.grid(row=5, column=1, sticky="w", padx=(0, 20), pady=10)
         self.entries["entry_status"] = status_dropdown
 

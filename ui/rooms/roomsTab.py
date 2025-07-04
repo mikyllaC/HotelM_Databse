@@ -405,12 +405,22 @@ class RoomsTab(ctk.CTkFrame):
         # Clear the treeview
         self.treeview.delete(*self.treeview.get_children())
 
+        # Convert room type name to room type ID if needed
+        room_type_id = None
+        if type_filter != "All":
+            # Get all room types
+            room_types = self.room_model.get_all_room_types()
+            for room_type in room_types:
+                if room_type["TYPE_NAME"] == type_filter:
+                    room_type_id = room_type["ROOM_TYPE_ID"]
+                    break
+
         # Use the enhanced search function from the model
         filtered_rooms = self.room_model.search_rooms(
             search_query=search_query,
             status_filter=status_filter,
             floor_filter=floor_filter,
-            room_type_filter=type_filter
+            room_type_filter=room_type_id if type_filter != "All" else "All"
         )
 
         # Populate the treeview with filtered results
@@ -462,7 +472,7 @@ class RoomsTab(ctk.CTkFrame):
         )
 
         if result:
-            success = self.room_model.hard_delete_room(room_id)
+            success = self.room_model.delete_room(room_id)
             if success:
                 messagebox.showinfo("Success", f"Room {room_number} has been permanently deleted.")
                 self.populate_treeview()

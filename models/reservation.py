@@ -6,13 +6,13 @@ def main():
     reservation_model = ReservationModel()
 
 
-
-
 class ReservationModel:
     def __init__(self):
         self.create_reservation_table()
 
+
     def create_reservation_table(self):
+        """Create the RESERVATION table if it doesn't exist"""
         with get_connection() as conn:
             cursor = conn.cursor()
 
@@ -44,27 +44,29 @@ class ReservationModel:
 
             conn.commit()
 
-    def add_reservation(self, reservation_data):
-        try:
-            # Handle both old ROOM_IDS format and direct ROOM_ID for backward compatibility
-            if "ROOM_IDS" in reservation_data and reservation_data["ROOM_IDS"]:
-                # Take only the first room from the list
-                room_id = reservation_data["ROOM_IDS"][0]
-                reservation_data["ROOM_ID"] = room_id
-                del reservation_data["ROOM_IDS"]
 
+    def add_reservation(self, reservation_data):
+        """Add a new reservation to the database"""
+        try:
             # Validate room rate exists before creating reservation
             from models.billing import BillingModel
+            from models.room import RoomModel
+            from models.guest import GuestModel
+
             billing_model = BillingModel()
+            room_model = RoomModel()
+            guest_model = GuestModel()
 
             room_id = reservation_data.get("ROOM_ID")
-            has_rate, rate_message = billing_model.validate_room_has_rate(room_id)
+            guest_id = reservation_data.get("GUEST_ID")
 
+            has_rate, rate_message = billing_model.validate_room_has_rate(room_id)
+            # If no rate exists, log the message and raise an error
             if not has_rate:
                 log(f"Cannot create reservation: {rate_message}")
                 raise ValueError(rate_message)
 
-            # Create the reservation directly
+            # Create the reservation
             with get_connection() as conn:
                 cursor = conn.cursor()
 
@@ -77,8 +79,8 @@ class ReservationModel:
                 """
 
                 cursor.execute(query, (
-                    reservation_data.get("GUEST_ID"),
-                    reservation_data.get("ROOM_ID"),
+                    guest_id,
+                    room_id,
                     reservation_data.get("CHECK_IN_DATE"),
                     reservation_data.get("CHECK_OUT_DATE"),
                     reservation_data.get("NUMBER_OF_ADULTS", 1),
@@ -93,6 +95,20 @@ class ReservationModel:
 
                 conn.commit()
                 log(f"Added new reservation with ID: {reservation_id}")
+
+                # Update guest status to "Reserved"
+                guest_data = guest_model.get_guest_by_id(guest_id)
+                if guest_data:
+                    guest_data["STATUS"] = "Reserved"
+                    guest_model.update_guest(guest_id, guest_data)
+                    log(f"Updated guest {guest_id} status to 'Reserved'")
+
+                # Update room status to "Reserved"
+                room_data = room_model.get_room_by_id(room_id)
+                if room_data:
+                    room_data["STATUS"] = "Reserved"
+                    room_model.update_room(room_data)
+                    log(f"Updated room {room_id} status to 'Reserved'")
 
                 # Auto-generate invoice for confirmed reservations
                 if reservation_data.get("STATUS") in ["Confirmed", "Booked"]:
@@ -123,7 +139,9 @@ class ReservationModel:
             log(f"Error adding reservation: {str(e)}")
             return None
 
+
     def get_reservation_by_id(self, reservation_id):
+        """Get a reservation by its ID"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -134,6 +152,7 @@ class ReservationModel:
 
                 reservation = cursor.fetchone()
 
+                # If reservation is found, convert it to a dictionary
                 if reservation:
                     # Convert to dictionary
                     column_names = [description[0] for description in cursor.description]
@@ -146,7 +165,9 @@ class ReservationModel:
             log(f"Error getting reservation {reservation_id}: {str(e)}")
             return None
 
+
     def get_all_reservations(self, status=None, guest_id=None):
+        """Get all reservations"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -176,6 +197,7 @@ class ReservationModel:
                 column_names = [description[0] for description in cursor.description]
                 result = []
 
+                # Iterate through the fetched reservations and convert each to a dictionary
                 for reservation in reservations:
                     reservation_dict = dict(zip(column_names, reservation))
                     result.append(reservation_dict)
@@ -186,18 +208,20 @@ class ReservationModel:
             log(f"Error getting reservations: {str(e)}")
             return []
 
+
     def update_reservation(self, reservation_id, updated_data):
+        """Update an existing reservation with new data"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
 
-                # Build the update query dynamically based on the provided fields
+                # Build the update query dynamically based on the provided fields from updated_data
                 allowed_fields = [
                     "CHECK_IN_DATE", "CHECK_OUT_DATE",
                     "NUMBER_OF_ADULTS", "NUMBER_OF_CHILDREN", "STATUS",
                     "NOTES", "EMPLOYEE_ID"
                 ]
-
+                # Ensure only allowed fields are updated
                 update_parts = []
                 params = []
 
@@ -206,10 +230,12 @@ class ReservationModel:
                         update_parts.append(f"{field} = ?")
                         params.append(updated_data[field])
 
+                # If no fields to update, return False
                 if not update_parts:
                     log("No valid fields to update")
                     return False
 
+                # If no reservation ID provided, return False
                 query = f"UPDATE RESERVATION SET {', '.join(update_parts)} WHERE RESERVATION_ID = ?"
                 params.append(reservation_id)
 
@@ -228,7 +254,9 @@ class ReservationModel:
             log(f"Error updating reservation {reservation_id}: {str(e)}")
             return False
 
+
     def cancel_reservation(self, reservation_id, reason=None):
+        """Cancel a reservation and update its status"""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -247,6 +275,40 @@ class ReservationModel:
                 # Check if the update was successful
                 if cursor.rowcount > 0:
                     log(f"Cancelled reservation {reservation_id}")
+
+                    # Update invoice status to Cancelled
+                    try:
+                        # Update invoices directly using SQL to avoid any object conversion issues
+                        with get_connection() as conn2:
+                            cursor2 = conn2.cursor()
+                            cursor2.execute("""
+                                UPDATE INVOICE 
+                                SET STATUS = 'Cancelled', UPDATED_DATE = CURRENT_TIMESTAMP
+                                WHERE RESERVATION_ID = ?
+                            """, (reservation_id,))
+                            conn2.commit()
+
+                            # Log the number of rows updated
+                            updated_count = cursor2.rowcount
+                            log(f"Invoice update attempted for reservation {reservation_id}, rows affected: {updated_count}")
+                            # If no invoices were updated, log a warning
+                            if updated_count > 0:
+                                log(f"Updated {updated_count} invoice(s) status to Cancelled for reservation {reservation_id}")
+                            else:
+                                log(f"No invoices found for reservation {reservation_id}", "WARNING")
+
+                            # Fetch and log the current status of invoices for this reservation
+                            cursor2.execute("SELECT INVOICE_ID, STATUS FROM INVOICE WHERE RESERVATION_ID = ?", (reservation_id,))
+                            invoices = cursor2.fetchall()
+                            if invoices:
+                                for inv in invoices:
+                                    log(f"Invoice {inv[0]} status after cancel: {inv[1]}")
+                            else:
+                                log(f"No invoice records found for reservation {reservation_id} after update.", "WARNING")
+
+                    except Exception as e:
+                        log(f"Error updating invoice status for cancelled reservation {reservation_id}: {str(e)}", "WARNING")
+
                     return True
                 else:
                     log(f"No reservation found with ID {reservation_id}")
@@ -255,6 +317,7 @@ class ReservationModel:
         except Exception as e:
             log(f"Error cancelling reservation {reservation_id}: {str(e)}")
             return False
+
 
     def delete_reservation(self, reservation_id):
         """Delete a reservation permanently from the database, but only if it's been cancelled"""
@@ -265,8 +328,35 @@ class ReservationModel:
                 return False
 
             # Only allow deletion of cancelled reservations
-            if reservation.get("STATUS") != "Cancelled":
+            status = reservation.get("STATUS") if isinstance(reservation, dict) else reservation["STATUS"]
+            if status != "Cancelled":
                 return False
+
+            # Delete associated invoices first to maintain referential integrity
+            from models.billing import BillingModel
+            billing_model = BillingModel()
+
+            # Get all invoices for this reservation
+            invoices = billing_model.get_invoices_by_reservation(reservation_id)
+
+            # Delete payments for each invoice
+            if invoices:
+                with get_connection() as conn:
+                    cursor = conn.cursor()
+
+                    for invoice in invoices:
+                        # Get invoice ID from the first column if it's a tuple, or from INVOICE_ID if it's a dict
+                        invoice_id = invoice[0] if isinstance(invoice, tuple) else invoice["INVOICE_ID"]
+
+                        # Delete all payments for this invoice
+                        cursor.execute("DELETE FROM PAYMENT WHERE INVOICE_ID = ?", (invoice_id,))
+                        log(f"Deleted payments for invoice {invoice_id}")
+
+                        # Delete the invoice itself
+                        cursor.execute("DELETE FROM INVOICE WHERE INVOICE_ID = ?", (invoice_id,))
+                        log(f"Deleted invoice {invoice_id} for reservation {reservation_id}")
+
+                    conn.commit()
 
             # Delete the reservation
             with get_connection() as conn:
@@ -287,33 +377,7 @@ class ReservationModel:
             log(f"Error deleting reservation: {str(e)}", "ERROR")
             return False
 
-    def get_reservations_by_guest_and_dates(self, guest_id, check_in_date, check_out_date):
-        """Get all reservations for a guest within specific dates (used for grouping related reservations)"""
-        try:
-            with get_connection() as conn:
-                cursor = conn.cursor()
 
-                cursor.execute("""
-                    SELECT * FROM RESERVATION 
-                    WHERE GUEST_ID = ? AND CHECK_IN_DATE = ? AND CHECK_OUT_DATE = ?
-                    ORDER BY RESERVATION_ID
-                """, (guest_id, check_in_date, check_out_date))
-
-                reservations = cursor.fetchall()
-
-                # Convert to list of dictionaries
-                column_names = [description[0] for description in cursor.description]
-                result = []
-
-                for reservation in reservations:
-                    reservation_dict = dict(zip(column_names, reservation))
-                    result.append(reservation_dict)
-
-                return result
-
-        except Exception as e:
-            log(f"Error getting reservations by guest and dates: {str(e)}")
-            return []
 
 if __name__ == "__main__":
     main()
