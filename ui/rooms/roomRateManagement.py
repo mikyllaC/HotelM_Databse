@@ -277,49 +277,6 @@ class RoomRateManagementFrame(ctk.CTkFrame):
         # Bind double-click to edit
         self.rates_tree.bind("<Double-1>", self.on_rate_double_click)
 
-        # Context menu
-        self.create_context_menu()
-
-    def create_context_menu(self):
-        """Create right-click context menu for the rates table"""
-        self.context_menu = ctk.CTkFrame(self, fg_color=self.BG_COLOR_2,
-                                        border_width=1, border_color=self.BORDER_COLOR)
-
-        edit_btn = ctk.CTkButton(self.context_menu, text="Edit Rate",
-                                command=self.edit_selected_rate,
-                                fg_color="transparent", text_color="#303644",
-                                hover_color=self.BG_COLOR_1)
-        edit_btn.pack(fill="x", padx=5, pady=2)
-
-        deactivate_btn = ctk.CTkButton(self.context_menu, text="Toggle Active",
-                                      command=self.toggle_rate_status,
-                                      fg_color="transparent", text_color="#303644",
-                                      hover_color=self.BG_COLOR_1)
-        deactivate_btn.pack(fill="x", padx=5, pady=2)
-
-        delete_btn = ctk.CTkButton(self.context_menu, text="Delete Rate",
-                                  command=self.delete_selected_rate,
-                                  fg_color="transparent", text_color="#dc3545",
-                                  hover_color="#f8d7da")
-        delete_btn.pack(fill="x", padx=5, pady=2)
-
-        # Bind right-click
-        self.rates_tree.bind("<Button-3>", self.show_context_menu)
-        self.bind("<Button-1>", self.hide_context_menu)
-
-    def show_context_menu(self, event):
-        """Show context menu at mouse position"""
-        # Select the item under cursor
-        item = self.rates_tree.identify_row(event.y)
-        if item:
-            self.rates_tree.selection_set(item)
-            self.context_menu.place(x=event.x_root - self.winfo_rootx(),
-                                   y=event.y_root - self.winfo_rooty())
-
-    def hide_context_menu(self, event=None):
-        """Hide context menu"""
-        self.context_menu.place_forget()
-
     def populate_rates_table(self):
         """Populate the rates table with data from database"""
         # Clear existing items
@@ -658,21 +615,6 @@ class RoomRateManagementFrame(ctk.CTkFrame):
             log(f"Error editing rate: {str(e)}", "ERROR")
             messagebox.showerror("Error", f"Could not load rate for editing: {str(e)}")
 
-    def toggle_rate_status(self):
-        """Toggle active status of selected rate"""
-        # Implementation for toggling rate status
-        messagebox.showinfo("Info", "Toggle rate status functionality will be implemented.")
-
-    def delete_selected_rate(self):
-        """Delete the selected rate"""
-        selection = self.rates_tree.selection()
-        if not selection:
-            messagebox.showwarning("No Selection", "Please select a rate to delete.")
-            return
-
-        if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete this rate?"):
-            # Implementation for deleting rate
-            messagebox.showinfo("Info", "Delete rate functionality will be implemented.")
 
     def refresh_data(self):
         """Refresh all data"""

@@ -1,7 +1,6 @@
 import customtkinter as ctk
-from tkinter import StringVar
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime
 
 
 class ModernDatePicker(ctk.CTkFrame):

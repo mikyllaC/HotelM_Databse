@@ -1,4 +1,3 @@
-import datetime
 import sqlite3
 
 from models.auth import AuthModel
@@ -15,6 +14,7 @@ class EmployeeModel():
 
 
     def create_employee_table(self):
+        # Creates the EMPLOYEE table if it doesn't exist
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -37,6 +37,10 @@ class EmployeeModel():
 
 
     def generate_employee_id(self, first_name, last_name):
+        """ Generates a unique EMPLOYEE_ID based on the first and last name.
+        Format: <initials><4-digit number>
+        Example: John Doe -> JD0001
+        """
         initials = (first_name[0] + last_name[0]).upper()
 
         with get_connection() as conn:
@@ -53,7 +57,8 @@ class EmployeeModel():
             # Orders descending by this integer to find the max. LIMIT gets the max
             result = cursor.fetchone()
 
-            if result: # if not the first employee
+            # If no previous employee ID exists, start with 1
+            if result:
                 previous_id_num = int(result[0][2:]) # skips the initials
                 new_id_num = previous_id_num + 1
             else:
@@ -65,6 +70,7 @@ class EmployeeModel():
 
 
     def add_employee(self, employee_data: dict):
+        """ Adds a new employee to the database."""
         employee_id = self.generate_employee_id(employee_data["FIRST_NAME"], employee_data["LAST_NAME"])
         employee_data["EMPLOYEE_ID"] = employee_id
 
@@ -94,15 +100,18 @@ class EmployeeModel():
 
         log(f"Added employee: ({employee_id}) to the database.")
 
+        # Add user credentials to AuthModel
         auth_model = AuthModel()
         auth_model.add_user_credentials(employee_id,
                                   employee_data.get("FIRST_NAME"),
                                   employee_data.get("LAST_NAME"),
                                   employee_data.get("HIRE_DATE"))
+
         return employee_id
 
 
     def get_all_employees(self):
+        """ Retrieves all employees from the database."""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -112,10 +121,13 @@ class EmployeeModel():
 
 
     def get_employee_details(self, employee_id):
+        """ Retrieves details of a specific employee by EMPLOYEE_ID."""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM EMPLOYEE WHERE EMPLOYEE_ID = ?", (employee_id,))
             row = cursor.fetchone()
+
+            # If row is not None, it means the employee was found
             if row:
                 # Convert to dict for easier access
                 columns = [col[0] for col in cursor.description]
@@ -124,9 +136,12 @@ class EmployeeModel():
 
 
     def update_employee_details(self, employee_id, updated_data: dict):
+        """ Updates details of a specific employee."""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
+                # Prepare the SET clause dynamically based on updated_data keys
+                # This allows updating only the fields that are provided
                 set_clause = ", ".join(f"{key} = ?" for key in updated_data)
                 values = list(updated_data.values()) + [employee_id]
                 cursor.execute(f"""
@@ -142,6 +157,7 @@ class EmployeeModel():
 
 
     def assign_staff(self, employee_id, assigned_to):
+        """ Assigns an employee to a specific task or department."""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
@@ -161,12 +177,14 @@ class EmployeeModel():
 
 
     def delete_employee(self, employee_id):
+        """ Deletes an employee from the database by EMPLOYEE_ID."""
         try:
             with get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute("DELETE FROM EMPLOYEE WHERE EMPLOYEE_ID = ?", (employee_id,))
                 conn.commit()
 
+                # Check if exactly one row was deleted
                 rows_deleted = cursor.rowcount
                 return rows_deleted == 1  # Return True if exactly one row was deleted
 

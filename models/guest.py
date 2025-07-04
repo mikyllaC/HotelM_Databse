@@ -11,6 +11,7 @@ class GuestModel:
 
 
     def create_guest_table(self):
+        """Create the GUEST table if it doesn't exist"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -34,6 +35,7 @@ class GuestModel:
 
 
     def add_guest(self, guest_data: dict):
+        """Add a new guest to the database"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
@@ -61,33 +63,133 @@ class GuestModel:
 
 
     def update_guest(self, guest_id: int, updated_data: dict):
-        with get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                            UPDATE GUEST SET
-                                FIRST_NAME = ?, LAST_NAME = ?, CONTACT_NUMBER = ?, EMAIL = ?,
-                                ADDRESS_LINE1 = ?, ADDRESS_LINE2 = ?, CITY = ?, STATE = ?,
-                                POSTAL_CODE = ?, COUNTRY = ?, STATUS = ?
-                            WHERE GUEST_ID = ?
-                        """, (
-                updated_data["FIRST_NAME"],
-                updated_data["LAST_NAME"],
-                updated_data["CONTACT_NUMBER"],
-                updated_data["EMAIL"],
-                updated_data.get("ADDRESS_LINE1", ""),
-                updated_data.get("ADDRESS_LINE2", ""),
-                updated_data.get("CITY", ""),
-                updated_data.get("STATE", ""),
-                updated_data.get("POSTAL_CODE", ""),
-                updated_data.get("COUNTRY", ""),
-                updated_data.get("STATUS", "Checked Out"),
-                guest_id
-            ))
-            conn.commit()
-            log(f"Guest updated: [{guest_id}] - {updated_data['FIRST_NAME']} {updated_data['LAST_NAME']}")
+        """Update an existing guest's information"""
+        try:
+            # Get current guest data to check for status changes
+            old_status = None
+            current_guest = self.get_guest_by_id(guest_id)
+            if current_guest:
+                old_status = current_guest.get("STATUS")
+
+            # Update the guest information
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                                UPDATE GUEST SET
+                                    FIRST_NAME = ?, LAST_NAME = ?, CONTACT_NUMBER = ?, EMAIL = ?,
+                                    ADDRESS_LINE1 = ?, ADDRESS_LINE2 = ?, CITY = ?, STATE = ?,
+                                    POSTAL_CODE = ?, COUNTRY = ?, STATUS = ?
+                                WHERE GUEST_ID = ?
+                            """, (
+                    updated_data["FIRST_NAME"],
+                    updated_data["LAST_NAME"],
+                    updated_data["CONTACT_NUMBER"],
+                    updated_data["EMAIL"],
+                    updated_data.get("ADDRESS_LINE1", ""),
+                    updated_data.get("ADDRESS_LINE2", ""),
+                    updated_data.get("CITY", ""),
+                    updated_data.get("STATE", ""),
+                    updated_data.get("POSTAL_CODE", ""),
+                    updated_data.get("COUNTRY", ""),
+                    updated_data.get("STATUS", "Checked Out"),
+                    guest_id
+                ))
+                conn.commit()
+                log(f"Guest updated: [{guest_id}] - {updated_data['FIRST_NAME']} {updated_data['LAST_NAME']}")
+
+            # Handle status changes that impact rooms
+            new_status = updated_data.get("STATUS")
+            if old_status != new_status:
+                log(f"Guest status changed from '{old_status}' to '{new_status}'")
+
+                # If guest is now checked in, update room status to occupied
+                if new_status == "Checked In":
+                    self.update_room_status(guest_id, "Occupied")
+                    log(f"Guest {guest_id} checked in - updated associated room to Occupied")
+
+                # If guest is now reserved, update room status to reserved
+                elif new_status == "Reserved":
+                    self.update_room_status(guest_id, "Reserved")
+                    log(f"Guest {guest_id} reserved - updated associated room to Reserved")
+
+                # If guest is now checked out, update room status to available
+                elif new_status == "Checked Out":
+                    self.update_room_status(guest_id, "Available")
+                    log(f"Guest {guest_id} checked out - updated associated room to Available")
+
+            return True
+
+        except Exception as e:
+            log(f"Error updating guest {guest_id}: {str(e)}", "ERROR")
+            return False
+
+    def update_room_status(self, guest_id: int, new_room_status: str):
+        """Update the status of rooms associated with a guest and their reservations"""
+        try:
+            # Find active reservations for this guest
+            with get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT RESERVATION_ID, ROOM_ID FROM RESERVATION
+                    WHERE GUEST_ID = ? AND STATUS IN ('Booked', 'Confirmed', 'Reserved')
+                    AND DATE(CHECK_OUT_DATE) >= DATE('now')
+                """, (guest_id,))
+
+                reservations = cursor.fetchall()
+
+                if not reservations:
+                    log(f"No active reservations found for guest {guest_id}")
+                    return
+
+                # Update status for all associated rooms and reservations
+                from models.room import RoomModel
+                room_model = RoomModel()
+
+                for reservation in reservations:
+                    reservation_id, room_id = reservation
+
+                    # Update room status
+                    room_data = room_model.get_room_by_id(room_id)
+                    if room_data:
+                        room_data["STATUS"] = new_room_status
+                        room_model.update_room(room_data)
+                        log(f"Updated room {room_id} status to '{new_room_status}'")
+
+                    # Also update reservation status based on the new room status
+                    if new_room_status == "Occupied":
+                        # Update reservation to "Checked In" when room is occupied
+                        cursor.execute("""
+                            UPDATE RESERVATION
+                            SET STATUS = 'Checked In'
+                            WHERE RESERVATION_ID = ?
+                        """, (reservation_id,))
+                        log(f"Updated reservation {reservation_id} status to 'Checked In'")
+                    elif new_room_status == "Reserved":
+                        # Update reservation to "Reserved"
+                        cursor.execute("""
+                            UPDATE RESERVATION
+                            SET STATUS = 'Reserved'
+                            WHERE RESERVATION_ID = ?
+                        """, (reservation_id,))
+                        log(f"Updated reservation {reservation_id} status to 'Reserved'")
+                    elif new_room_status == "Available":
+                        # Update reservation to "Checked Out" when room becomes available
+                        cursor.execute("""
+                            UPDATE RESERVATION
+                            SET STATUS = 'Checked Out'
+                            WHERE RESERVATION_ID = ?
+                        """, (reservation_id,))
+                        log(f"Updated reservation {reservation_id} status to 'Checked Out'")
+
+                # Commit the changes
+                conn.commit()
+
+        except Exception as e:
+            log(f"Error updating room and reservation status for guest {guest_id}: {str(e)}", "ERROR")
 
 
     def get_all_guests(self):
+        """Retrieve all guests from the database"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM GUEST")
@@ -97,10 +199,11 @@ class GuestModel:
 
 
     def get_guest_by_id(self, guest_id: int):
+        """Retrieve a guest by their ID"""
         with get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-            SELECT * FROM GUEST 
+            SELECT * FROM GUEST
             WHERE GUEST_ID = ?
             """, (guest_id,))
 
@@ -125,6 +228,7 @@ class GuestModel:
             log(f"No guest found with ID: {guest_id}")
             return None
 
+
     def check_guest_has_reservations(self, guest_id: int):
         """Check if a guest has any existing active (non-cancelled) reservations"""
         try:
@@ -133,7 +237,7 @@ class GuestModel:
 
                 # Check only for active reservations (status != 'Cancelled')
                 cursor.execute("""
-                SELECT COUNT(*) FROM RESERVATION 
+                SELECT COUNT(*) FROM RESERVATION
                 WHERE GUEST_ID = ? AND STATUS != 'Cancelled'
                 """, (guest_id,))
 
@@ -141,7 +245,7 @@ class GuestModel:
 
                 # Also get total reservation count for informational purposes
                 cursor.execute("""
-                SELECT COUNT(*) FROM RESERVATION 
+                SELECT COUNT(*) FROM RESERVATION
                 WHERE GUEST_ID = ?
                 """, (guest_id,))
 
@@ -151,6 +255,7 @@ class GuestModel:
         except Exception as e:
             log(f"Error checking guest reservations: {str(e)}", "ERROR")
             return True, 0, 0  # Assume has reservations on error for safety
+
 
     def delete_guest(self, guest_id: int):
         """Delete a guest if they have no existing active reservations"""
@@ -184,6 +289,7 @@ class GuestModel:
                     # Commit the transaction
                     conn.commit()
 
+                    # Check if the guest was successfully deleted
                     if guest_deleted > 0:
                         log_message = f"Successfully deleted guest with ID: {guest_id}"
                         if cancelled_count > 0:

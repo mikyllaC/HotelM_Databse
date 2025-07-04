@@ -25,7 +25,7 @@ class AuthModel:
     def add_user_credentials(self, employee_id, first_name, last_name, hire_date, password=None):
         if not password:
             default_password = self.generate_default_password(first_name, last_name, hire_date)
-            log(f"[DEV] Generated default password for {employee_id}: {default_password}")
+            # log(f"[DEV] Generated default password for {employee_id}: {default_password}")
         else:
             default_password = password
 
@@ -112,11 +112,8 @@ class AuthModel:
         login_screen = LoginScreen(parent, parent.on_login_success)
         login_screen.pack(fill="both", expand=True)
 
+
     def signup(self, employee_data: dict, password: str):
-        """
-        Register a new employee with authentication credentials
-        Returns: (success: bool, message: str, employee_id: str or None)
-        """
         try:
             from models.employee import EmployeeModel
 
@@ -127,7 +124,7 @@ class AuthModel:
                 if not employee_data.get(field):
                     return False, f"Missing required field: {field}", None
 
-            # Check if email or contact already exists
+            # validation - Check if email or contact already exists
             if self.check_existing_credentials(employee_data.get("EMAIL"), employee_data.get("CONTACT_NUMBER")):
                 return False, "Email or contact number already exists", None
 
@@ -145,6 +142,7 @@ class AuthModel:
         except Exception as e:
             log(f"Signup error: {str(e)}")
             return False, f"Registration failed: {str(e)}", None
+
 
     def check_existing_credentials(self, email: str, contact_number: str):
         """Check if email or contact number already exists in the database"""

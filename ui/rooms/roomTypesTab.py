@@ -312,7 +312,7 @@ class RoomTypesTab(ctk.CTkFrame):
     def delete_room_type(self, room_type_id, delete_associated_rooms=False):
         """Delete the room type and refresh the list"""
         try:
-            success = self.room_model.hard_delete_room_type(room_type_id, delete_associated_rooms=delete_associated_rooms)
+            success = self.room_model.delete_room_type(room_type_id, delete_associated_rooms=delete_associated_rooms)
 
             if success:
                 self.populate_treeview()

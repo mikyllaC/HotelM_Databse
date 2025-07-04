@@ -65,12 +65,13 @@ class GuestListPage(ctk.CTkFrame):
             height=36,
             values=["All Status", "Checked In", "Checked Out", "Reserved"],
             variable=self.filter_var,
-            font=("Arial", 14)
+            font=("Arial", 14),
+            command=lambda x: self.filter_table()  # Call filter_table when selection changes
         )
         self.filter_combobox.pack(side="left", padx=(0, 10))
 
         self.search_entry.bind("<KeyRelease>", lambda e: self.filter_table())
-        self.filter_combobox.bind("<<ComboboxSelected>>", lambda e: self.filter_table())
+        #self.filter_combobox.bind("<<ComboboxSelected>>", lambda e: self.filter_table())
 
         # Table Frame
         self.table_frame = ctk.CTkFrame(self, corner_radius=10, fg_color="transparent")
@@ -137,7 +138,12 @@ class GuestListPage(ctk.CTkFrame):
         for row in self.guest_data[1:]:
             name = row[1].lower() if len(row) > 1 else ""
             status = row[5] if len(row) > 5 else ""
-            if (search_text in name) and (selected_status == "All Status" or status == selected_status):
+
+            # Check both search text and status filter
+            name_match = search_text in name
+            status_match = selected_status == "All Status" or status == selected_status
+
+            if name_match and status_match:
                 filtered_data.append(row)
 
         self.update_treeview(filtered_data)

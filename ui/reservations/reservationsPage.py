@@ -58,7 +58,7 @@ class ReservationsPage(ctk.CTkFrame):
             self.action_frame,
             width=220,
             height=36,
-            placeholder_text="Search guest name...",
+            placeholder_text="Search guest name or reservation ID...",
             textvariable=self.search_var,
             font=("Roboto Condensed", 14)
         )
@@ -113,11 +113,6 @@ class ReservationsPage(ctk.CTkFrame):
         self.treeview.column("Guest Name", width=200, anchor="w")
         self.treeview.column("Room Number", width=100, anchor="w")
         self.treeview.column("Status", width=150, anchor="w")
-
-        # Scrollbar for treeview
-        scrollbar = ttk.Scrollbar(self.table_frame, orient="vertical", command=self.treeview.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.treeview.configure(yscrollcommand=scrollbar.set)
 
         # Bind row selection event
         self.treeview.bind("<<TreeviewSelect>>", self.on_row_select)
@@ -222,8 +217,11 @@ class ReservationsPage(ctk.CTkFrame):
                 except Exception as e:
                     log(f"Could not get guest details for ID {guest_id}: {str(e)}", "WARNING")
 
-                # Apply search filter on guest name
-                if search_text and search_text not in guest_name.lower():
+                # Format reservation ID for display and searching
+                reservation_id_str = f"r{reservation.get('RESERVATION_ID', 0)}".lower()
+
+                # Apply search filter on guest name or reservation ID
+                if search_text and (search_text not in guest_name.lower() and search_text not in reservation_id_str):
                     continue
 
                 # Try to get room details

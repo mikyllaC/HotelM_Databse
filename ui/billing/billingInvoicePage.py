@@ -316,108 +316,95 @@ class BillingInvoicePage(ctk.CTkFrame):
             # Get detailed invoice information from billing model
             detailed_invoice = self.billing_model.get_invoice_by_reservation(reservation_id)
 
-            if detailed_invoice:
-                # Use detailed invoice data
-                self.populate_detailed_invoice(detailed_invoice, billing_data)
-            else:
-                # Fallback to basic information
-                self.populate_basic_invoice(reservation_id, billing_data)
+            # Populate invoice with the best available data
+            self.populate_invoice_content(reservation_id, detailed_invoice, billing_data)
 
         except Exception as e:
             log(f"Error populating invoice: {str(e)}", "ERROR")
             messagebox.showerror("Error", f"Could not load invoice details: {str(e)}")
 
-    def populate_detailed_invoice(self, detailed_invoice, billing_data):
-        """Populate invoice using detailed billing model data"""
+    def populate_invoice_content(self, reservation_id, detailed_invoice=None, billing_data=None):
+        """Populate invoice using the best available data sources"""
         try:
-            reservation_id = detailed_invoice['RESERVATION_ID']
+            # Start with reservation data (always required)
+            reservation = self.reservation_model.get_reservation_by_id(reservation_id)
+            if not reservation:
+                raise ValueError(f"Reservation R{reservation_id} not found")
 
-            # Get guest details
-            guest_id = detailed_invoice['GUEST_ID']
+            guest_id = reservation.get("GUEST_ID")
+            room_id = reservation.get("ROOM_ID")
+
+            # ---- GUEST INFORMATION ----
             guest = self.guest_model.get_guest_by_id(guest_id)
             if guest:
                 self.guest_name_label.configure(text=f"Guest: {guest.get('FIRST_NAME', '')} {guest.get('LAST_NAME', '')}")
                 self.guest_email_label.configure(text=f"Email: {guest.get('EMAIL', 'N/A')}")
                 self.guest_contact_label.configure(text=f"Contact: {guest.get('CONTACT_NUMBER', 'N/A')}")
 
-            # Get room details
-            room_id = detailed_invoice['ROOM_ID']
+            # ---- ROOM INFORMATION ----
             room_data = self.room_model.get_room_data_with_type(room_id)
+            room_type = "Standard"
+            room_number = "N/A"
+
             if room_data:
                 room_type = room_data.get('TYPE_NAME', 'Standard')
                 room_number = room_data.get('ROOM_NUMBER', 'N/A')
-                self.room_info_label.configure(text=f"Room: {room_number} ({room_type})")
+            elif billing_data:
+                room_number = billing_data[3]  # Use room number from billing data if available
 
-            # Set booking details
+            self.room_info_label.configure(text=f"Room: {room_number} ({room_type})")
+
+            # ---- BOOKING DATES ----
             self.reservation_id_label.configure(text=f"Reservation: R{reservation_id}")
-            self.dates_label.configure(text=f"Dates: {detailed_invoice['CHECK_IN_DATE']} to {detailed_invoice['CHECK_OUT_DATE']}")
 
-            # Calculate nights
-            try:
-                check_in_date = datetime.strptime(detailed_invoice['CHECK_IN_DATE'], "%Y-%m-%d")
-                check_out_date = datetime.strptime(detailed_invoice['CHECK_OUT_DATE'], "%Y-%m-%d")
-                nights = (check_out_date - check_in_date).days
-                self.nights_label.configure(text=f"Nights: {nights}")
-            except:
-                nights = 1
-                self.nights_label.configure(text="Nights: 1")
+            # Use detailed_invoice dates if available, otherwise use billing_data
+            check_in_date_str = None
+            check_out_date_str = None
 
-            # Populate services table with detailed items
-            self.populate_detailed_services_table(detailed_invoice)
+            if detailed_invoice:
+                check_in_date_str = detailed_invoice.get('CHECK_IN_DATE')
+                check_out_date_str = detailed_invoice.get('CHECK_OUT_DATE')
+            elif billing_data:
+                check_in_date_str = billing_data[4]
+                check_out_date_str = billing_data[5]
 
-            # Update payment status and payment info
-            self.update_payment_status_detailed(detailed_invoice)
-
-        except Exception as e:
-            log(f"Error populating detailed invoice: {str(e)}", "ERROR")
-            # Fallback to basic population
-            self.populate_basic_invoice(detailed_invoice['RESERVATION_ID'], billing_data)
-
-    def populate_basic_invoice(self, reservation_id, billing_data):
-        """Fallback method using basic reservation data"""
-        try:
-            reservation = self.reservation_model.get_reservation_by_id(reservation_id)
-            if reservation:
-                guest_id = reservation.get("GUEST_ID")
-                room_id = reservation.get("ROOM_ID")
-
-                # Get guest details
-                guest = self.guest_model.get_guest_by_id(guest_id)
-                if guest:
-                    self.guest_name_label.configure(text=f"Guest: {guest.get('FIRST_NAME', '')} {guest.get('LAST_NAME', '')}")
-                    self.guest_email_label.configure(text=f"Email: {guest.get('EMAIL', 'N/A')}")
-                    self.guest_contact_label.configure(text=f"Contact: {guest.get('CONTACT_NUMBER', 'N/A')}")
-
-                # Get room details
-                room_data = self.room_model.get_room_data_with_type(room_id)
-                if room_data:
-                    room_type = room_data.get('TYPE_NAME', 'Standard')
-                    self.room_info_label.configure(text=f"Room: {billing_data[3]} ({room_type})")
-
-                # Set booking details
-                self.reservation_id_label.configure(text=f"Reservation: R{reservation_id}")
-                self.dates_label.configure(text=f"Dates: {billing_data[4]} to {billing_data[5]}")
+            # If we have both dates, update the UI and calculate nights
+            if check_in_date_str and check_out_date_str:
+                self.dates_label.configure(text=f"Dates: {check_in_date_str} to {check_out_date_str}")
 
                 # Calculate nights
                 try:
-                    check_in_date = datetime.strptime(billing_data[4], "%Y-%m-%d")
-                    check_out_date = datetime.strptime(billing_data[5], "%Y-%m-%d")
+                    check_in_date = datetime.strptime(check_in_date_str, "%Y-%m-%d")
+                    check_out_date = datetime.strptime(check_out_date_str, "%Y-%m-%d")
                     nights = (check_out_date - check_in_date).days
+                    if nights <= 0:
+                        nights = 1
                     self.nights_label.configure(text=f"Nights: {nights}")
                 except:
                     nights = 1
                     self.nights_label.configure(text="Nights: 1")
 
-            # Populate services table with basic calculation
-            self.populate_basic_services_table(billing_data, nights if 'nights' in locals() else 1)
+            # ---- SERVICES & CHARGES ----
+            if detailed_invoice:
+                # Try to get detailed breakdown
+                self.populate_services_table_from_detail(detailed_invoice, nights if 'nights' in locals() else 1)
+            else:
+                # Use basic calculation with billing_data
+                self.populate_services_table_basic(billing_data, nights if 'nights' in locals() else 1)
 
-            # Update payment status
-            self.update_payment_status(billing_data[7])
+            # ---- PAYMENT STATUS ----
+            if detailed_invoice:
+                self.update_payment_status_detailed(detailed_invoice)
+            elif billing_data:
+                self.update_payment_status(billing_data[7])
+            else:
+                self.update_payment_status("Pending")
 
         except Exception as e:
-            log(f"Error populating basic invoice: {str(e)}", "ERROR")
+            log(f"Error populating invoice content: {str(e)}", "ERROR")
+            messagebox.showerror("Error", f"Could not populate invoice content: {str(e)}")
 
-    def populate_detailed_services_table(self, detailed_invoice):
+    def populate_services_table_from_detail(self, detailed_invoice, nights=1):
         """Populate the services table with detailed billing items"""
         # Clear existing items
         for item in self.services_tree.get_children():
@@ -457,22 +444,19 @@ class BillingInvoicePage(ctk.CTkFrame):
 
             else:
                 # Fallback to basic calculation if detailed breakdown fails
-                self._populate_basic_services_fallback(detailed_invoice)
+                self.populate_services_table_fallback(detailed_invoice, nights)
 
         except Exception as e:
             log(f"Error populating detailed services table: {str(e)}", "ERROR")
             # Fallback to basic calculation
-            self._populate_basic_services_fallback(detailed_invoice)
+            self.populate_services_table_fallback(detailed_invoice, nights)
 
-    def _populate_basic_services_fallback(self, detailed_invoice):
+    def populate_services_table_fallback(self, detailed_invoice, nights=1):
         """Fallback method for populating services when detailed breakdown fails"""
         try:
-            # Calculate nights
-            check_in_date = datetime.strptime(detailed_invoice['CHECK_IN_DATE'], "%Y-%m-%d")
-            check_out_date = datetime.strptime(detailed_invoice['CHECK_OUT_DATE'], "%Y-%m-%d")
-            nights = (check_out_date - check_in_date).days
-            if nights <= 0:
-                nights = 1
+            # Clear existing items
+            for item in self.services_tree.get_children():
+                self.services_tree.delete(item)
 
             # Get room details
             room_id = detailed_invoice['ROOM_ID']
@@ -507,6 +491,49 @@ class BillingInvoicePage(ctk.CTkFrame):
         except Exception as e:
             log(f"Error in fallback services population: {str(e)}", "ERROR")
 
+    def populate_services_table_basic(self, billing_data, nights=1):
+        """Populate services table with basic billing data"""
+        try:
+            # Clear existing items
+            for item in self.services_tree.get_children():
+                self.services_tree.delete(item)
+
+            if not billing_data:
+                return
+
+            room_number = billing_data[3]
+            total_amount_str = billing_data[6]
+
+            # Extract numeric amount from total_amount_str (e.g., "₱450.00" -> 450.00)
+            if total_amount_str.startswith('₱'):
+                total_amount_str = total_amount_str[1:]
+            try:
+                total_amount = float(total_amount_str)
+            except ValueError:
+                total_amount = 0.0
+
+            # Calculate subtotal and tax
+            tax_rate = 0.12  # Default tax rate
+            subtotal = total_amount / (1 + tax_rate)
+            tax_amount = total_amount - subtotal
+
+            # Add basic room accommodation row
+            self.services_tree.insert("", "end",
+                                    values=(
+                                        f"Room Accommodation - {room_number}",
+                                        nights,
+                                        f"₱{subtotal:.2f}"
+                                    ),
+                                    tags=('evenrow',))
+
+            # Update summary
+            self.subtotal_label.configure(text=f"Subtotal: ₱{subtotal:.2f}")
+            self.tax_label.configure(text=f"Tax ({tax_rate*100:.0f}%): ₱{tax_amount:.2f}")
+            self.total_label.configure(text=f"TOTAL: ₱{total_amount:.2f}")
+
+        except Exception as e:
+            log(f"Error populating basic services table: {str(e)}", "ERROR")
+
     def update_payment_status_detailed(self, detailed_invoice):
         """Update payment status using detailed invoice data"""
         try:
@@ -539,6 +566,37 @@ class BillingInvoicePage(ctk.CTkFrame):
             # Fallback to basic status update
             self.update_payment_status(detailed_invoice.get('STATUS', 'Pending'))
 
+    def update_payment_status(self, status):
+        """Update payment status display with basic status information"""
+        try:
+            status_colors = {
+                "Paid": "#28a745",
+                "Pending": "#ffc107",
+                "Partial": "#fd7e14",
+                "Overdue": "#dc3545",
+                "Cancelled": "#6c757d"
+            }
+
+            color = status_colors.get(status, "#6c757d")
+            self.payment_status_label.configure(text=f"Status: {status}", text_color=color)
+
+            # Hide payment info frame for basic display unless it's paid
+            if status == "Paid":
+                # We don't have payment details here, so just show placeholder
+                self.payment_info_frame.pack(fill="x", pady=(0, 15))
+                self.payment_method_label.pack(anchor="w", padx=15, pady=(10, 2))
+                self.payment_date_label.pack(anchor="w", padx=15, pady=(0, 10))
+                self.payment_method_label.configure(text="Payment Method: Card/Cash")
+                self.payment_date_label.configure(text="Payment Date: Recent")
+            else:
+                # Hide payment info for other statuses
+                self.payment_info_frame.pack_forget()
+
+        except Exception as e:
+            log(f"Error updating payment status: {str(e)}", "ERROR")
+            # Set a default value
+            self.payment_status_label.configure(text="Status: Unknown", text_color="#6c757d")
+
     def download_invoice(self):
         """Download invoice as PDF"""
         messagebox.showinfo("Download", "Invoice download functionality will be implemented.")
@@ -553,7 +611,6 @@ class BillingInvoicePage(ctk.CTkFrame):
             self.master.destroy()
 
 
-# For standalone testing
 if __name__ == "__main__":
     root = ctk.CTk()
     root.title("Invoice")
